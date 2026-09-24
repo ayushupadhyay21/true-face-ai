@@ -7,7 +7,7 @@
 param(
     [string]$PgRoot = "C:\Program Files\PostgreSQL\18",
     [string]$Version = "v0.8.6",
-    [string]$VcVars = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+    [string]$VcVars = "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat"
 )
 $ErrorActionPreference = "Stop"
 

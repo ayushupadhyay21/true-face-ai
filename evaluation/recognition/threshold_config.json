@@ -1,0 +1,13 @@
+{
+  "model_name": "arcface_w600k_r50",
+  "model_version": "4c06341c33c2",
+  "embedding_dimension": 512,
+  "preprocessing_version": "arcface-5pt-umeyama-112-v1",
+  "metric": "cosine_similarity",
+  "threshold": 0.22374546527862552,
+  "target_far": 0.001,
+  "dataset": "LFW (lfw.tgz, pairs.txt: 10 folds x 300 genuine + 300 impostor)",
+  "experiment_id": "recognition-calibration-20260924T203410Z",
+  "date": "2026-09-24T20:34:14.588799+00:00",
+  "note": "Calibrated on LFW web photos; webcam conditions differ. Re-calibrate on local data."
+}

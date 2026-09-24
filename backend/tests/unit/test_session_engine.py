@@ -11,7 +11,7 @@ from tests.fakes import (META, PERSON_A, PERSON_B, FakePeople, FakeSessions, Fak
                          frame, unit)
 
 IMG = np.zeros((10, 10, 3), np.uint8)
-S = Settings(identity_threshold_override=0.5, liveness_min_frames=3)
+S = Settings(identity_threshold_override=0.5, liveness_min_frames=3, active_liveness_enabled=True)
 
 
 def action_frames(action, emb=PERSON_A, live=0.9):
@@ -87,6 +87,21 @@ def test_enrollment_then_recognition_known(env):
     res = engine.complete(d.sid, RECOGNITION)
     assert res["result"] == "KNOWN" and res["person"]["name"] == "Alice"
     assert len(sessions.events) > 0
+
+
+def test_passive_only_mode_finishes_without_instruction():
+    settings = Settings(identity_threshold_override=0.5, liveness_min_frames=3, active_liveness_enabled=False)
+    analyzer, sessions, people = ScriptedAnalyzer(), FakeSessions(), FakePeople()
+    vectors = FakeVectors(people)
+    engine = SessionEngine(settings, analyzer, sessions, people, vectors, META)
+    start = engine.start(RECOGNITION)
+    driver = Driver(engine, analyzer, start["session_id"])
+
+    out = driver.passive()
+
+    assert out["status"] == "PASSED"
+    assert out["phase"] == "DONE"
+    assert out["instruction"] is None
 
 
 def test_unknown_person_not_forced(env):

@@ -147,8 +147,9 @@ class SessionEngine:
                 raise AppError(ErrorCode.INVALID_REQUEST, "Person is disabled")
             required = (Action.LOOK_LEFT, Action.LOOK_RIGHT)
         now = utcnow()
+        actions = generate_actions(self.s.challenge_length, required=required) if self.s.active_liveness_enabled else []
         st = SessionState(session_id=uuid.uuid4(), session_type=session_type, person_id=person_id,
-                          actions=generate_actions(self.s.challenge_length, required=required),
+                  actions=actions,
                           challenge_id=uuid.uuid4(), created_at=now,
                           expires_at=now + timedelta(seconds=self.s.challenge_timeout_s))
         self.sessions_repo.create(st.session_id, session_type, st.challenge_json(), st.expires_at, person_id)
@@ -236,6 +237,11 @@ class SessionEngine:
         if not result.is_live:
             self._fail(st, ErrorCode.LIVENESS_FAILED)
             return self.describe(st, fa, "Liveness check failed")
+        st.liveness_score = result.score
+        if not self.s.active_liveness_enabled:
+            st.status, st.phase = "PASSED", "DONE"
+            self.sessions_repo.update_status(st.session_id, "PASSED", challenge=st.challenge_json())
+            return self.describe(st, fa, "Liveness passed. Finishing...")
         yaw, pitch, eyes = np.median(np.array(st.baseline_obs), axis=0)
         st.baseline = Baseline(float(yaw), float(pitch), float(eyes))
         st.phase = "ACTIVE"

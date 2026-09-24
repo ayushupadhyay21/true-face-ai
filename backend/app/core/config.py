@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     liveness_min_face_size: int = 60
 
     # --- Active liveness ------------------------------------------------------------------
+    active_liveness_enabled: bool = True
     challenge_length: int = 3  # random actions per session (a final CENTER is always appended)
     camera_mirrored: bool = False  # clients must send raw (un-mirrored) frames unless this is set
     challenge_timeout_s: float = 60.0  # whole session lifetime

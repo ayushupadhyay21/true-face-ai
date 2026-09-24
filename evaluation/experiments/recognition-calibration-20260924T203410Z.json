@@ -1,0 +1,121 @@
+{
+  "experiment_id": "recognition-calibration-20260924T203410Z",
+  "date": "2026-09-24T20:34:14.588799+00:00",
+  "model": "arcface_w600k_r50",
+  "model_version": "4c06341c33c2",
+  "dataset": "LFW (lfw.tgz, pairs.txt: 10 folds x 300 genuine + 300 impostor)",
+  "configuration": {
+    "target_far": 0.001,
+    "det_threshold": 0.5,
+    "preprocessing_version": "arcface-5pt-umeyama-112-v1"
+  },
+  "threshold": 0.22374546527862552,
+  "hardware": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpus": 20,
+    "ram_gb": 15.7,
+    "python": "3.12.10",
+    "onnxruntime": "1.30.0",
+    "providers": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ]
+  },
+  "metrics": {
+    "threshold": 0.22374546527862552,
+    "selection_rule": "smallest threshold with FAR <= 0.001 on all impostor pairs",
+    "far_at_threshold": 0.0006680026720107257,
+    "frr_at_threshold": 0.003011040481766477,
+    "tar_at_threshold": 0.9969889595182335,
+    "eer": 0.0030085262529072603,
+    "eer_threshold": 0.1815476417541504,
+    "best_accuracy": 0.9984957379241184,
+    "best_accuracy_threshold": 0.25367310643196106,
+    "cv_10fold_mean_far": 0.0009999999999999898,
+    "cv_10fold_mean_frr": 0.003007848986109856,
+    "cv_10fold_threshold_std": 0.0031324562182958463,
+    "genuine_pairs": 2989,
+    "impostor_pairs": 2994,
+    "pairs_skipped": 17,
+    "images_without_face": 11,
+    "genuine_mean": 0.6727977156989319,
+    "genuine_std": 0.10372547943561011,
+    "impostor_mean": 0.0041164379844842655,
+    "impostor_std": 0.05765357003026931,
+    "impostor_max": 0.2453516721725464,
+    "genuine_min": 0.004378814250230789
+  },
+  "cv_folds": [
+    {
+      "fold": 0,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.006666666666666667
+    },
+    {
+      "fold": 1,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.0
+    },
+    {
+      "fold": 2,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.0
+    },
+    {
+      "fold": 3,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.0033783783783783786
+    },
+    {
+      "fold": 4,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.010033444816053512
+    },
+    {
+      "fold": 5,
+      "threshold": 0.21690988540649417,
+      "far": 0.0033333333333332993,
+      "frr": 0.0
+    },
+    {
+      "fold": 6,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.006666666666666667
+    },
+    {
+      "fold": 7,
+      "threshold": 0.21690988540649417,
+      "far": 0.0033333333333332993,
+      "frr": 0.0
+    },
+    {
+      "fold": 8,
+      "threshold": 0.22374546527862552,
+      "far": 0.0,
+      "frr": 0.0033333333333333335
+    },
+    {
+      "fold": 9,
+      "threshold": 0.21690988540649417,
+      "far": 0.0033333333333332993,
+      "frr": 0.0
+    }
+  ],
+  "results": {
+    "plots": [
+      "evaluation\\reports\\recognition\\recognition-calibration-20260924T203410Z\\similarity_hist.png",
+      "evaluation\\reports\\recognition\\recognition-calibration-20260924T203410Z\\far_frr_curve.png",
+      "evaluation\\reports\\recognition\\recognition-calibration-20260924T203410Z\\roc.png"
+    ],
+    "embedding_seconds": 157.9
+  },
+  "notes": "Face nearest image centre used for LFW (offline dataset rule only)."
+}
