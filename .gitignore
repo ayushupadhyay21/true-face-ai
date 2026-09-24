@@ -1,0 +1,60 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Node / Angular
+node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Model weights (large, separately licensed; fetch via documented scripts)
+models/**/*.onnx
+models/**/*.pth
+models/**/*.pt
+models/**/*.params
+models/**/*.bin
+models/**/*.zip
+
+# Biometric data and datasets: never commit
+datasets/*
+!datasets/README.md
+captures/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.mp4
+*.avi
+*.mov
+*.webm
+!docs/**/*.png
+!evaluation/reports/**/*.png
+
+# Evaluation raw outputs (reports and plots are kept)
+evaluation/**/raw/
+
+# Logs and local DB dumps
+logs/
+*.log
+*.dump
+*.sql.gz
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

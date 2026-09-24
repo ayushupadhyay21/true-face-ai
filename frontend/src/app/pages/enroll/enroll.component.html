@@ -1,0 +1,68 @@
+<section class="page">
+  <h1>Enroll a person</h1>
+
+  <form class="card form" [formGroup]="form" (ngSubmit)="start()">
+    <label class="field">
+      <span>Name *</span>
+      <input type="text" formControlName="name" autocomplete="off" maxlength="200" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <small class="field-error">Name is required.</small>
+      }
+    </label>
+    <label class="field">
+      <span>External ID (optional)</span>
+      <input type="text" formControlName="externalId" autocomplete="off" maxlength="200" />
+    </label>
+
+    <app-camera-select [camera]="camera" [disabled]="runner.busy()" />
+
+    <div class="actions">
+      @if (runner.busy()) {
+        <button type="button" class="secondary" (click)="cancel()">Cancel</button>
+      } @else {
+        @if (!enrolled()) {
+          <button type="submit" [disabled]="form.invalid">{{ outcome() ? 'Try again' : 'Start camera' }}</button>
+        }
+        @if (outcome()) {
+          <button type="button" class="secondary" (click)="newEnrollment()">New person</button>
+        }
+      }
+    </div>
+  </form>
+
+  <div class="camera-box" [class.hidden]="!camera.active()">
+    <!-- Mirrored for display only; captured frames are raw (not mirrored). -->
+    <video #video class="mirrored" autoplay muted playsinline></video>
+  </div>
+
+  <app-live-status [state]="runner.state()" [status]="runner.status()" />
+
+  @if (outcome(); as o) {
+    @if (o.kind === 'completed') {
+      @if (o.result.result === 'ENROLLED') {
+        <div class="card result result-success">
+          <h2>Enrollment complete</h2>
+          @if (person(); as p) {
+            <p><b>{{ p.name }}</b>@if (p.external_id) { <span class="muted"> ({{ p.external_id }})</span> }</p>
+          }
+          <p>Embeddings stored: <b>{{ o.result.embeddings_stored ?? '-' }}</b></p>
+          <p>Poses: <b>{{ formatPoses(o.result.poses) }}</b></p>
+          @if (o.result.liveness_score != null) {
+            <p class="muted small">Liveness score: {{ o.result.liveness_score }}</p>
+          }
+        </div>
+      } @else {
+        <div class="card result result-danger">
+          <h2>Enrollment failed</h2>
+          <p>{{ errorCodeText(o.result.error_code ?? o.result.result) }}</p>
+        </div>
+      }
+    } @else {
+      <div class="card result result-danger">
+        <h2>Enrollment failed</h2>
+        <p>{{ o.message }}</p>
+        <p class="muted small">Code: {{ o.code }}</p>
+      </div>
+    }
+  }
+</section>

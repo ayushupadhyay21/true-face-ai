@@ -1,0 +1,100 @@
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #1c2430;
+  --muted: #5d6b7a;
+  --border: #d6dde4;
+  --primary: #1f6feb;
+  --primary-text: #ffffff;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --danger: #cf222e;
+  --ok-bg: #e7f5ea;
+  --warn-bg: #fff5d6;
+  --danger-bg: #fdecee;
+  --neutral-bg: #eef1f5;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+h1 { font-size: 1.5rem; margin: 0 0 0.75rem; }
+h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+p { margin: 0.35rem 0; }
+
+.topnav {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.6rem 1rem; background: #1c2430; color: #fff;
+}
+.topnav .brand { font-weight: 600; }
+.topnav nav { display: flex; gap: 0.25rem; }
+.topnav a { color: #cfd8e3; text-decoration: none; padding: 0.35rem 0.75rem; border-radius: 6px; }
+.topnav a.active, .topnav a:hover { background: #2f3b4a; color: #fff; }
+
+.status-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1.25rem;
+  padding: 0.4rem 1rem; font-size: 0.85rem; background: var(--card); border-bottom: 1px solid var(--border);
+}
+.status-bar .ok { color: var(--ok); }
+.status-bar .warn { color: var(--warn); }
+.status-bar .bad { color: var(--danger); }
+
+.banner { padding: 0.6rem 1rem; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+.banner-warn { background: var(--warn-bg); color: var(--warn); }
+.banner-danger { background: var(--danger-bg); color: var(--danger); }
+
+main { padding: 1rem; }
+.page { max-width: 720px; margin: 0 auto; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 0.75rem 0; }
+.form { display: flex; flex-direction: column; gap: 0.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.9rem; }
+.field.inline { max-width: 100%; }
+.field input, .field select {
+  font: inherit; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; width: 100%;
+}
+.field-error { color: var(--danger); }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
+
+button {
+  font: inherit; cursor: pointer; padding: 0.55rem 1.1rem; border-radius: 6px;
+  border: 1px solid var(--primary); background: var(--primary); color: var(--primary-text);
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; color: var(--primary); }
+button.link { border: none; background: none; color: var(--primary); padding: 0; font-size: inherit; }
+
+.camera-box {
+  width: 100%; max-width: 640px; margin: 0.75rem auto; aspect-ratio: 4 / 3;
+  background: #000; border-radius: 10px; overflow: hidden;
+}
+.camera-box.hidden { display: none; }
+.camera-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Display only: frames sent to the backend are captured un-mirrored. */
+video.mirrored { transform: scaleX(-1); }
+
+.live-status { text-align: center; min-height: 1.5rem; }
+.instruction { font-size: 1.6rem; font-weight: 700; color: var(--primary); margin: 0.5rem 0; }
+.status-text { font-size: 1.05rem; }
+.status-text.warning { color: var(--warn); }
+.progress { height: 8px; background: var(--neutral-bg); border-radius: 4px; overflow: hidden; max-width: 360px; margin: 0.5rem auto 0.25rem; }
+.progress-fill { height: 100%; background: var(--primary); transition: width 0.2s; }
+
+.result { border-width: 2px; }
+.result-success { background: var(--ok-bg); border-color: var(--ok); }
+.result-success h2 { color: var(--ok); }
+.result-neutral { background: var(--neutral-bg); border-color: var(--muted); }
+.result-danger { background: var(--danger-bg); border-color: var(--danger); }
+.result-danger h2 { color: var(--danger); }
+.person-name { font-size: 1.4rem; font-weight: 600; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+
+@media (max-width: 480px) {
+  main { padding: 0.5rem; }
+  .instruction { font-size: 1.3rem; }
+  .actions button { flex: 1; }
+}
