@@ -1,4 +1,5 @@
-"""Create the local research database, role and pgvector extension, then apply migrations.
+"""Create the local research database (and a separate <name>_test database for pytest),
+the role and the pgvector extension, then apply migrations.
 
 Needs a PostgreSQL superuser once (normally `postgres`). The admin password is read
 from the environment or asked for interactively and is never written anywhere.
@@ -37,21 +38,23 @@ def main() -> None:
             c.execute(sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(
                 sql.Identifier(s.postgres_user), sql.Literal(s.postgres_password)))
             print(f"created role {s.postgres_user}")
-        if c.execute("SELECT 1 FROM pg_database WHERE datname = %s", (s.postgres_db,)).fetchone() is None:
-            c.execute(sql.SQL("CREATE DATABASE {} OWNER {}").format(
-                sql.Identifier(s.postgres_db), sql.Identifier(s.postgres_user)))
-            print(f"created database {s.postgres_db}")
         available = c.execute("SELECT default_version FROM pg_available_extensions WHERE name = 'vector'").fetchone()
         if available is None:
             sys.exit("pgvector is not installed in this PostgreSQL server. Run scripts/install_pgvector.ps1 "
                      "from an elevated PowerShell first (see DATABASE.md).")
+        # Main database plus a separate <name>_test database that the test suite may wipe freely.
+        for db in (s.postgres_db, f"{s.postgres_db}_test"):
+            if c.execute("SELECT 1 FROM pg_database WHERE datname = %s", (db,)).fetchone() is None:
+                c.execute(sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                    sql.Identifier(db), sql.Identifier(s.postgres_user)))
+                print(f"created database {db}")
 
-    with psycopg.connect(admin + f" dbname={s.postgres_db}", autocommit=True) as c:
-        c.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        print("pgvector", c.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()[0])
-
-    applied = apply_migrations(s.database_url)
-    print("migrations applied:", applied or "none (already up to date)")
+    for db in (s.postgres_db, f"{s.postgres_db}_test"):
+        with psycopg.connect(admin + f" dbname={db}", autocommit=True) as c:
+            c.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            version = c.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()[0]
+        applied = apply_migrations(s.model_copy(update={"postgres_db": db}).database_url)
+        print(f"{db}: pgvector {version}, migrations applied: {applied or 'none (already up to date)'}")
 
 
 if __name__ == "__main__":

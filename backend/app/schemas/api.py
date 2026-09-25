@@ -58,6 +58,17 @@ class FrameSubmit(BaseModel):
             raise ValueError("image_base64 is not valid base64") from e
 
 
+class LiveRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    live_id: uuid.UUID
+
+
+class LiveFrame(FrameSubmit):
+    """Frame for live multi-face mode (same image rules as FrameSubmit)."""
+    session_id: uuid.UUID | None = None  # unused; live frames are keyed by live_id
+    live_id: uuid.UUID
+
+
 class ErrorBody(BaseModel):
     code: str
     message: str

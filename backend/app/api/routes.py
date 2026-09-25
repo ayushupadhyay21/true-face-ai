@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.api.deps import get_container
 from app.core.config import load_identity_threshold
 from app.core.errors import AppError, ErrorCode
-from app.schemas.api import EnrollmentStart, FrameSubmit, PersonCreate, SessionRef
+from app.schemas.api import EnrollmentStart, FrameSubmit, LiveFrame, LiveRef, PersonCreate, SessionRef
 from app.services.frame_analyzer import decode_frame
 from app.services.session_engine import ENROLLMENT, RECOGNITION
 
@@ -132,3 +132,32 @@ def liveness_status(session_id: uuid.UUID):
     out["events"] = [{"frame_number": e["frame_number"], "score": round(e["score"], 4), "prediction": e["prediction"],
                       "stage": e["stage"]} for e in events]
     return ok(out)
+
+
+# ------------------------------------------------------------------ live multi-face mode
+def _live():
+    c = get_container()
+    if c.live is None:
+        raise AppError(ErrorCode.MODEL_UNAVAILABLE, "Live mode unavailable")
+    return c
+
+
+@router.post("/api/live/start", status_code=201)
+def live_start():
+    return ok(_live().live.start())
+
+
+@router.post("/api/live/frame")
+def live_frame(body: LiveFrame):
+    c = _live()
+    try:
+        data = body.image_bytes()
+    except ValueError as e:
+        raise AppError(ErrorCode.INVALID_FRAME, str(e)) from e
+    frame = decode_frame(data, c.settings)
+    return ok(c.live.process_frame(body.live_id, body.frame_number, frame))  # frame discarded after use
+
+
+@router.post("/api/live/stop")
+def live_stop(body: LiveRef):
+    return ok(_live().live.stop(body.live_id))

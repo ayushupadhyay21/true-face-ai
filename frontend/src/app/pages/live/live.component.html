@@ -1,0 +1,95 @@
+<section class="page">
+  <header class="page-header">
+    <span class="eyebrow"><app-icon name="users" /> Multi-face tracking</span>
+    <h1>Live View</h1>
+    <p class="lead">Every face in view is tracked in real time, checked for liveness and labelled with the person's name when recognized.</p>
+  </header>
+
+  <div class="layout">
+    <div class="stack">
+      <div #stage class="stage" [class.state-live]="running()" [class.is-live]="camera.active()">
+        <!-- Mirrored for display only; captured frames are raw (not mirrored). -->
+        <video #video class="mirrored" autoplay muted playsinline></video>
+        <!-- Not mirrored: box coordinates are mirrored in code so text stays readable. -->
+        <canvas #overlay class="live-overlay" aria-hidden="true"></canvas>
+
+        @if (camera.active() && running()) {
+          <span class="live-badge"><span class="rec"></span>LIVE</span>
+        }
+
+        @if (!camera.active()) {
+          <div class="stage-placeholder">
+            @if (busy()) {
+              <span class="ph-icon"><app-icon name="camera" /></span>
+              <p>Opening camera...</p>
+            } @else {
+              <span class="ph-icon"><app-icon name="camera-off" /></span>
+              <p>Camera is off</p>
+              <p class="ph-sub">Press "Start live view" to begin</p>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="live-stats" aria-live="off">
+        <span class="chip"><app-icon name="users" /> Faces <b>{{ running() ? faces().length : '-' }}</b></span>
+        <span class="chip"><app-icon name="refresh" /> FPS <b>{{ fps() !== null ? fps()!.toFixed(1) : '-' }}</b></span>
+        <span class="chip"><app-icon name="clock" /> Server <b>{{ serverMs() !== null ? serverMs()!.toFixed(0) + ' ms' : '-' }}</b></span>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card form">
+        <h2 class="card-title"><app-icon name="camera" /> Live view</h2>
+        <app-camera-select [camera]="camera" [disabled]="busy()" />
+        <div class="actions">
+          @if (busy()) {
+            <button type="button" class="danger-ghost block" (click)="stop()"><app-icon name="stop" /> Stop</button>
+          } @else {
+            <button type="button" class="block" (click)="start()"><app-icon name="play" /> Start live view</button>
+          }
+        </div>
+        @if (state() === 'starting') {
+          <div class="step-row"><span class="spinner" aria-hidden="true"></span><p class="status-text">Starting live session...</p></div>
+        }
+      </div>
+
+      @if (error(); as e) {
+        <div class="card result result-danger" role="alert">
+          <div class="result-head">
+            <span class="result-icon"><app-icon name="alert" /></span>
+            <div>
+              <p class="result-kicker">Live view stopped</p>
+              <h2>ERROR</h2>
+            </div>
+          </div>
+          <div class="result-body">
+            <p class="result-detail">{{ e.message }}</p>
+          </div>
+          <div class="actions">
+            <button type="button" (click)="start()"><app-icon name="refresh" /> Try again</button>
+          </div>
+        </div>
+      }
+
+      <div class="card">
+        <h2 class="card-title"><app-icon name="eye" /> In view</h2>
+        @if (faceRows().length) {
+          <ul class="face-list" aria-live="polite">
+            @for (f of faceRows(); track f.id) {
+              <li>
+                <span class="face-name">{{ f.title }}</span>
+                @if (f.similarity) {
+                  <span class="muted small">{{ f.similarity }}</span>
+                }
+                <span class="face-chip" [class]="'tone-' + f.tone">{{ f.chip }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="muted small">{{ running() ? 'No faces in view.' : 'Start the live view to see detected faces.' }}</p>
+        }
+      </div>
+    </div>
+  </div>
+</section>

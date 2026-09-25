@@ -8,6 +8,10 @@ import {
   Envelope,
   FrameRequest,
   HealthData,
+  LiveFrameRequest,
+  LiveFrameResult,
+  LiveStartData,
+  LiveStopResult,
   ModelsHealthData,
   Person,
   PersonCreateRequest,
@@ -55,6 +59,18 @@ export class ApiService {
 
   completeRecognition(sessionId: string): Promise<RecognitionResult> {
     return this.post<RecognitionResult>('/api/recognition/complete', { session_id: sessionId });
+  }
+
+  liveStart(): Promise<LiveStartData> {
+    return this.post<LiveStartData>('/api/live/start', null);
+  }
+
+  liveFrame(body: LiveFrameRequest): Promise<LiveFrameResult> {
+    return this.post<LiveFrameResult>('/api/live/frame', body);
+  }
+
+  liveStop(liveId: string): Promise<LiveStopResult> {
+    return this.post<LiveStopResult>('/api/live/stop', { live_id: liveId });
   }
 
   private get<T>(path: string): Promise<T> {

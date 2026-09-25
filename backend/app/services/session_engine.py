@@ -346,9 +346,15 @@ class SessionEngine:
         others = [m for m in self.vectors.search(probe, self.meta, top_k=self.s.search_top_k, only_active=False)
                   if m["person_id"] != st.person_id and m["similarity"] >= thr]
         if others:
-            self.sessions_repo.add_result(st.session_id, "UNKNOWN", liveness=st.liveness_score)
+            # Liveness has passed here, so naming the matched person follows the identity rule.
+            match = others[0]
+            self.sessions_repo.add_result(st.session_id, "KNOWN", match["person_id"], match["similarity"],
+                                          st.liveness_score, thr, self.meta.model_name, self.meta.model_version)
             raise AppError(ErrorCode.INVALID_REQUEST,
-                           "This face already matches another enrolled person; enrollment refused", 409)
+                           f"This face is already enrolled as '{match['name']}'; enrollment refused", 409,
+                           details={"matched_person": {"id": str(match["person_id"]), "name": match["name"],
+                                                       "external_id": match["external_id"]},
+                                    "similarity": round(match["similarity"], 4)})
         centers = sorted(st.center_samples, key=lambda x: x.quality, reverse=True)[:self.s.enrollment_center_samples]
         samples = centers + st.side_samples + st.final_samples
         for smp in samples:

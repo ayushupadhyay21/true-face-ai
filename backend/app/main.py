@@ -27,14 +27,16 @@ app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in settings.co
 app.include_router(router)
 
 
-def _err(status: int, code: str, message: str) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"ok": False, "data": None,
-                                                     "error": {"code": code, "message": message}})
+def _err(status: int, code: str, message: str, details: dict | None = None) -> JSONResponse:
+    error = {"code": code, "message": message}
+    if details:
+        error["details"] = details
+    return JSONResponse(status_code=status, content={"ok": False, "data": None, "error": error})
 
 
 @app.exception_handler(AppError)
 async def app_error(_: Request, exc: AppError):
-    return _err(exc.status, exc.code.value, exc.message)
+    return _err(exc.status, exc.code.value, exc.message, exc.details)
 
 
 @app.exception_handler(RequestValidationError)

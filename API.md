@@ -46,6 +46,28 @@ Session outcomes (`error_code` / `result`): NO_FACE (frame-level, the session wa
 
 **SessionView:** `session_id, session_type, status, phase (PASSIVE|ACTIVE|DONE), current_action, instruction, completed_actions, total_actions, passive_frames, passive_frames_required, expires_at, error_code, message`. Frame responses add `frame: {face_count, frame_error, quality{…, quality_reason}, liveness_frame_score, timings_ms}`.
 
+## Live multi-face mode
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/api/live/start` | – | `{live_id}` |
+| POST | `/api/live/frame` | `{live_id, frame_number, image_base64}` | `{frame_width, frame_height, face_count, threshold, timings_ms, faces: [...]}` |
+| POST | `/api/live/stop` | `{live_id}` | `{stopped}` |
+
+Each entry in `faces` has these fields:
+
+| Field | Meaning |
+|---|---|
+| `track_id` | Stable id for the same face across frames |
+| `bbox` | `[x1, y1, x2, y2]`, normalised 0–1 in raw image coordinates |
+| `state` | `CHECKING` (fewer than 5 liveness frames), `LIVE`, `KNOWN`, `UNKNOWN`, `SPOOF`, or `TOO_SMALL` |
+| `label` | Text to show on the box |
+| `liveness_score` | Mean liveness score for this face |
+| `name`, `person_id` | Set **only** when the state is `KNOWN` |
+| `similarity` | Best match score for this face |
+
+A live session is dropped after 60 s without frames, and at most 8 can be open at once.
+
 ## Typical recognition flow
 
 ```text

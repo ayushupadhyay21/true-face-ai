@@ -7,11 +7,12 @@ import { CameraService } from '../../core/camera.service';
 import { errorCodeText, formatPoses } from '../../core/messages';
 import { SessionOutcome, SessionRunner } from '../../core/session-runner.service';
 import { CameraSelectComponent } from '../../shared/camera-select.component';
+import { IconComponent } from '../../shared/icon.component';
 import { LiveStatusComponent } from '../../shared/live-status.component';
 
 @Component({
   selector: 'app-enroll',
-  imports: [ReactiveFormsModule, LiveStatusComponent, CameraSelectComponent],
+  imports: [ReactiveFormsModule, LiveStatusComponent, CameraSelectComponent, IconComponent],
   providers: [CameraService, SessionRunner],
   templateUrl: './enroll.component.html',
 })
@@ -35,6 +36,14 @@ export class EnrollComponent implements OnInit {
   });
   protected readonly errorCodeText = errorCodeText;
   protected readonly formatPoses = formatPoses;
+
+  /** Visual state of the camera frame (border glow / scanning ring). Presentation only. */
+  protected readonly stageState = computed<'idle' | 'live' | 'scanning' | 'success' | 'failure'>(() => {
+    if (this.outcome()) return this.enrolled() ? 'success' : 'failure';
+    const s = this.runner.state();
+    if (s === 'running' || s === 'completing') return 'scanning';
+    return this.runner.busy() ? 'live' : 'idle';
+  });
 
   ngOnInit(): void {
     void this.camera.refreshDevices();

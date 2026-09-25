@@ -7,11 +7,12 @@ import { CameraService } from '../../core/camera.service';
 import { RecognitionOutcome, errorCodeText, recognitionOutcome } from '../../core/messages';
 import { SessionOutcome, SessionRunner } from '../../core/session-runner.service';
 import { CameraSelectComponent } from '../../shared/camera-select.component';
+import { IconComponent, IconName } from '../../shared/icon.component';
 import { LiveStatusComponent } from '../../shared/live-status.component';
 
 @Component({
   selector: 'app-recognize',
-  imports: [DecimalPipe, LiveStatusComponent, CameraSelectComponent],
+  imports: [DecimalPipe, LiveStatusComponent, CameraSelectComponent, IconComponent],
   providers: [CameraService, SessionRunner],
   templateUrl: './recognize.component.html',
 })
@@ -37,6 +38,33 @@ export class RecognizeComponent implements OnInit {
       person: null,
       similarity: null,
     };
+  });
+
+  /** Visual state of the camera frame (border glow / scanning ring). Presentation only. */
+  protected readonly stageState = computed<'idle' | 'live' | 'scanning' | 'success' | 'warn' | 'failure'>(() => {
+    const c = this.card();
+    if (c) return c.tone === 'success' ? 'success' : c.tone === 'neutral' ? 'warn' : 'failure';
+    const s = this.runner.state();
+    if (s === 'running' || s === 'completing') return 'scanning';
+    return this.runner.busy() ? 'live' : 'idle';
+  });
+
+  protected readonly resultIcon = computed<IconName>(() => {
+    switch (this.card()?.title) {
+      case 'KNOWN PERSON': return 'check';
+      case 'UNKNOWN PERSON': return 'question';
+      case 'LIVENESS FAILED': return 'x';
+      case 'CHALLENGE FAILED': return 'move';
+      case 'MULTIPLE FACES': return 'users';
+      case 'SESSION EXPIRED': return 'clock';
+      default: return 'alert';
+    }
+  });
+
+  /** Similarity as a 0..100 bar width (clamped). */
+  protected readonly similarityPct = computed(() => {
+    const s = this.card()?.similarity;
+    return s == null ? 0 : Math.round(Math.min(1, Math.max(0, s)) * 100);
   });
 
   ngOnInit(): void {

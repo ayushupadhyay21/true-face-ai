@@ -21,6 +21,28 @@ This is a research prototype. **It is not claimed to be spoof-proof.** Everythin
 | No stack traces in responses. Unhandled errors return `INTERNAL_ERROR`; details go to `logs/backend.log`. | `main.py` |
 | No secrets in code. DB credentials come from `.env` (git-ignored); the admin password is only prompted for. | config, `setup_database.py` |
 
+## Liveness modes
+
+`ACTIVE_LIVENESS_ENABLED` (in `.env`) selects the mode.
+
+- **`false`: passive only.** Fully automatic, with no user instructions. The session passes once the mean PAD score over 5 good frontal frames reaches the threshold. Nothing in this mode tests for a pre-recorded video (replay attack), and the end-of-session "same person" CENTER check is skipped. Security then depends entirely on the passive model.
+- **`true`: passive plus the random challenge.** This is the stronger setting against video replay.
+
+## Live multi-face mode (`/api/live/*`, Live page)
+
+This mode shows every face in view, with a box and a name. It deliberately relaxes two verification rules:
+
+- **Several faces are allowed.** Each face is tracked and judged on its own.
+- **There is no active challenge.** Each face gets passive liveness only: the mean of a rolling window of up to 10 frame scores, starting after at least 5 frames.
+
+Rules that still hold:
+
+- A face's name is returned only while that face is LIVE and its similarity is at or above the calibrated threshold.
+- A face judged SPOOF has its cached identity cleared.
+- If a new embedding stops matching a face's own history, that face's identity is reset.
+
+This makes the mode weaker than a verification session against video replay. Use the Recognize page (a verification session) when a single, stronger decision is needed.
+
 ## Known limitations (not mitigated)
 
 1. **Passive PAD coverage is unknown.** The Silent-Face training data is undisclosed, and the model runs on SCRFD crops rather than its native detector's. Only the attacks actually recorded and evaluated (EVALUATION.md) have evidence.

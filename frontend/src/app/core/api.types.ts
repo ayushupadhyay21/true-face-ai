@@ -127,3 +127,42 @@ export interface RecognitionResult {
   person?: { id: string; name: string; external_id: string | null };
   error_code?: string;
 }
+
+// ---------- Live multi-face tracking (/api/live/*) ----------
+
+export type LiveFaceState = 'CHECKING' | 'LIVE' | 'KNOWN' | 'UNKNOWN' | 'SPOOF' | 'TOO_SMALL';
+
+export interface LiveStartData {
+  live_id: string;
+}
+
+export interface LiveFrameRequest {
+  live_id: string;
+  frame_number: number;
+  image_base64: string;
+}
+
+export interface LiveFace {
+  track_id: number;
+  /** [x1, y1, x2, y2] normalized 0..1 in RAW (un-mirrored) image coordinates. */
+  bbox: [number, number, number, number];
+  state: LiveFaceState;
+  label: string;
+  liveness_score: number | null;
+  name: string | null;
+  person_id: string | null;
+  similarity: number | null;
+}
+
+export interface LiveFrameResult {
+  frame_width: number;
+  frame_height: number;
+  face_count: number;
+  threshold: number | null;
+  timings_ms: { detection?: number; total?: number; [key: string]: number | undefined };
+  faces: LiveFace[];
+}
+
+export interface LiveStopResult {
+  stopped: boolean;
+}

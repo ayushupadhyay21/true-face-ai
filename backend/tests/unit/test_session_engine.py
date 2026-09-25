@@ -248,6 +248,8 @@ def test_duplicate_identity_enrollment_refused(env):
     with pytest.raises(AppError) as e:
         enroll(env, unit(PERSON_A + 0.05), "Mallory")
     assert e.value.status == 409
+    assert "Alice" in e.value.message
+    assert e.value.details["matched_person"]["name"] == "Alice" and e.value.details["similarity"] > 0.5
 
 
 def test_not_calibrated_blocks_start(env):

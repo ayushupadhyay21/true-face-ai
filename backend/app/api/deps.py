@@ -8,6 +8,7 @@ from app.db.database import Database
 from app.db.repositories import EmbeddingMeta, PeopleRepository, SessionRepository, VectorSearchService
 from app.ml.registry import ModelRegistry, get_registry
 from app.services.frame_analyzer import FrameAnalyzer
+from app.services.live_tracker import LiveTracker
 from app.services.session_engine import SessionEngine
 
 
@@ -20,6 +21,7 @@ class Container:
     sessions: SessionRepository
     vectors: VectorSearchService
     engine: SessionEngine
+    live: LiveTracker | None = None
 
 
 _container: Container | None = None
@@ -33,7 +35,8 @@ def build_container(settings: Settings | None = None) -> Container:
     meta = EmbeddingMeta(rec.info.name, rec.info.version, rec.embedding_dimension, registry.alignment.version)
     people, sessions, vectors = PeopleRepository(db), SessionRepository(db), VectorSearchService(db)
     engine = SessionEngine(settings, FrameAnalyzer(registry, settings), sessions, people, vectors, meta)
-    return Container(settings, db, registry, people, sessions, vectors, engine)
+    live = LiveTracker(settings, registry, vectors, meta)
+    return Container(settings, db, registry, people, sessions, vectors, engine, live)
 
 
 def get_container() -> Container:

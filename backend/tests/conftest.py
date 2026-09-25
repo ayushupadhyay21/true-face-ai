@@ -43,11 +43,12 @@ def face_img(lfw):
 
 
 def db_conninfo() -> str | None:
+    """Tests use <POSTGRES_DB>_test, never the real database (clean_db truncates every table)."""
     from app.core.config import get_settings
     s = get_settings()
     if not s.postgres_password and not os.environ.get("PGPASSWORD"):
         return None
-    return s.database_url
+    return s.model_copy(update={"postgres_db": f"{s.postgres_db}_test"}).database_url
 
 
 @pytest.fixture(scope="session")
@@ -62,13 +63,16 @@ def database():
         if db.ping()["pgvector"] is None:
             pytest.skip("pgvector extension not installed")
     except Exception as e:
-        pytest.skip(f"PostgreSQL unavailable: {e}")
+        pytest.skip(f"PostgreSQL test database unavailable (run scripts/setup_database.py): {e}")
     return db
 
 
 @pytest.fixture()
 def clean_db(database):
     with database.connect() as c:
+        name = c.execute("SELECT current_database() AS n").fetchone()["n"]
+        if not name.endswith("_test"):  # hard guard: never wipe a real database
+            pytest.fail(f"refusing to truncate non-test database {name!r}")
         c.execute("TRUNCATE people, face_embeddings, recognition_sessions, recognition_results, liveness_events "
                   "CASCADE")
     return database

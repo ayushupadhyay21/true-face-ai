@@ -40,8 +40,9 @@ HTTP_STATUS = {
 class AppError(Exception):
     """Expected, user-facing error. `message` must never contain internal details."""
 
-    def __init__(self, code: ErrorCode, message: str, status: int | None = None):
+    def __init__(self, code: ErrorCode, message: str, status: int | None = None, details: dict | None = None):
         super().__init__(message)
         self.code = code
         self.message = message
         self.status = status or HTTP_STATUS.get(code, 422)
+        self.details = details  # optional structured, user-safe data (returned as error.details)

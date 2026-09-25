@@ -4,6 +4,9 @@ export const API_BASE_URL = 'http://localhost:8000';
 /** Pause between one frame response and the next capture (ms). */
 export const FRAME_DELAY_MS = 120;
 
+/** Pause between frames on the Live (multi-face) page (ms). */
+export const LIVE_FRAME_DELAY_MS = 60;
+
 /** Max captured frame size; frames are scaled down to fit, never up. */
 export const CAPTURE_MAX_WIDTH = 640;
 export const CAPTURE_MAX_HEIGHT = 480;

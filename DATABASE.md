@@ -21,6 +21,8 @@ pgvector is not bundled with the EDB Windows installer. It is built from source 
 
 4. Verify: `GET http://localhost:8000/health` returns `database_ok: true`.
 
+`setup_database.py` also creates `<POSTGRES_DB>_test`. The pytest database tests run **only** against that test database: they truncate every table before each test. `conftest.py` refuses to truncate any database whose name does not end in `_test`. Enrolled people in the real database are never touched by tests.
+
 ## Tables
 
 | Table | Purpose | Key constraints |

@@ -1,41 +1,102 @@
 <section class="page">
-  <h1>Face Verification</h1>
-  <p class="muted">Look at the camera, then follow the on-screen instructions. Only one person should be in view.</p>
+  <header class="page-header">
+    <span class="eyebrow"><app-icon name="shield" /> Liveness + recognition</span>
+    <h1>Face Verification</h1>
+    <p class="lead">Look at the camera, then follow the on-screen instructions. Only one person should be in view.</p>
+  </header>
 
-  <div class="card form">
-    <app-camera-select [camera]="camera" [disabled]="runner.busy()" />
-    <div class="actions">
-      @if (runner.busy()) {
-        <button type="button" class="secondary" (click)="cancel()">Cancel</button>
-      } @else if (!outcome()) {
-        <button type="button" (click)="start()">Start verification</button>
-      }
-    </div>
-  </div>
+  <div class="layout">
+    <div class="stage" [class]="'state-' + stageState()" [class.is-live]="camera.active()">
+      <!-- Mirrored for display only; captured frames are raw (not mirrored). -->
+      <video #video class="mirrored" autoplay muted playsinline></video>
 
-  <div class="camera-box" [class.hidden]="!camera.active()">
-    <!-- Mirrored for display only; captured frames are raw (not mirrored). -->
-    <video #video class="mirrored" autoplay muted playsinline></video>
-  </div>
-
-  <app-live-status [state]="runner.state()" [status]="runner.status()" />
-
-  @if (card(); as c) {
-    <div class="card result" [class.result-success]="c.tone === 'success'" [class.result-neutral]="c.tone === 'neutral'" [class.result-danger]="c.tone === 'danger'">
-      <h2>{{ c.title }}</h2>
-      @if (c.person; as p) {
-        <p class="person-name">{{ p.name }}</p>
-        @if (p.externalId) {
-          <p>External ID: <b>{{ p.externalId }}</b></p>
-        }
-      }
-      <p>{{ c.detail }}</p>
-      @if (c.similarity !== null) {
-        <p class="muted small">Similarity: {{ c.similarity | number: '1.3-3' }}</p>
-      }
-      <div class="actions">
-        <button type="button" (click)="start()">Try again</button>
+      <div class="stage-overlay" aria-hidden="true">
+        <div class="face-guide"></div>
       </div>
+
+      @if (camera.active() && runner.busy()) {
+        <span class="live-badge"><span class="rec"></span>LIVE</span>
+      }
+
+      @if (!camera.active()) {
+        <div class="stage-placeholder">
+          @if (card(); as c) {
+            <span class="ph-icon"><app-icon [name]="resultIcon()" /></span>
+            <p><b>{{ c.title }}</b></p>
+            <p class="ph-sub">Camera stopped</p>
+          } @else if (runner.busy()) {
+            <span class="ph-icon"><app-icon name="camera" /></span>
+            <p>Opening camera...</p>
+          } @else {
+            <span class="ph-icon"><app-icon name="camera-off" /></span>
+            <p>Camera is off</p>
+            <p class="ph-sub">Press "Start verification" to begin</p>
+          }
+        </div>
+      }
     </div>
-  }
+
+    <div class="stack">
+      <div class="card form">
+        <h2 class="card-title"><app-icon name="camera" /> Session</h2>
+        <app-camera-select [camera]="camera" [disabled]="runner.busy()" />
+        <div class="actions">
+          @if (runner.busy()) {
+            <button type="button" class="danger-ghost block" (click)="cancel()"><app-icon name="stop" /> Cancel</button>
+          } @else if (!outcome()) {
+            <button type="button" class="block" (click)="start()"><app-icon name="play" /> Start verification</button>
+          }
+        </div>
+        @if (!runner.busy() && !outcome()) {
+          <ul class="tip-list">
+            <li><app-icon name="sun" /> Face an even light source; avoid strong backlight.</li>
+            <li><app-icon name="frame" /> Keep your whole face inside the oval guide.</li>
+            <li><app-icon name="move" /> When asked, move your head slowly and clearly.</li>
+          </ul>
+        }
+      </div>
+
+      @if (runner.busy()) {
+        <div class="card">
+          <app-live-status [state]="runner.state()" [status]="runner.status()" [view]="runner.view()" />
+        </div>
+      }
+
+      @if (card(); as c) {
+        <div class="card result" role="status" aria-live="polite"
+             [class.result-success]="c.tone === 'success'" [class.result-neutral]="c.tone === 'neutral'" [class.result-danger]="c.tone === 'danger'">
+          <div class="result-head">
+            <span class="result-icon"><app-icon [name]="resultIcon()" /></span>
+            <div>
+              <p class="result-kicker">Result</p>
+              <h2>{{ c.title }}</h2>
+            </div>
+          </div>
+          <div class="result-body">
+            @if (c.person; as p) {
+              <p class="person-name">{{ p.name }}</p>
+              @if (p.externalId) {
+                <dl class="kv"><dt>External ID</dt><dd>{{ p.externalId }}</dd></dl>
+              }
+            }
+            <p class="result-detail">{{ c.detail }}</p>
+            @if (c.similarity !== null) {
+              <div class="meter similarity">
+                <div class="meter-head">
+                  <span class="meter-label">Similarity</span>
+                  <b>{{ c.similarity | number: '1.3-3' }}</b>
+                </div>
+                <div class="progress" role="meter" aria-label="Similarity" [attr.aria-valuenow]="c.similarity" aria-valuemin="0" aria-valuemax="1">
+                  <div class="progress-fill" [style.width.%]="similarityPct()"></div>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="actions">
+            <button type="button" (click)="start()"><app-icon name="refresh" /> Try again</button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
 </section>
