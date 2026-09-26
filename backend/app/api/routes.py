@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.api.deps import get_container
 from app.core.config import load_identity_threshold
 from app.core.errors import AppError, ErrorCode
-from app.schemas.api import EnrollmentStart, FrameSubmit, LiveFrame, LiveRef, PersonCreate, SessionRef
+from app.schemas.api import EnrollmentStart, FrameSubmit, LiveFrame, LiveRef, PersonAssign, PersonCreate, SessionRef
 from app.services.frame_analyzer import decode_frame
 from app.services.session_engine import ENROLLMENT, RECOGNITION
 
@@ -52,12 +52,32 @@ def create_person(body: PersonCreate):
     return ok(_person_out({**get_container().people.create(body.name, body.external_id), "embedding_count": 0}))
 
 
+@router.get("/api/person")
+def list_people(status: str | None = None):
+    return ok([_person_out(r) for r in get_container().people.list(status)])
+
+
 @router.get("/api/person/{person_id}")
 def get_person(person_id: uuid.UUID):
     row = get_container().people.get(person_id)
     if row is None:
         raise AppError(ErrorCode.PERSON_NOT_FOUND, "Person not found")
     return ok(_person_out(row))
+
+
+@router.get("/api/person/{person_id}/snapshot")
+def person_snapshot(person_id: uuid.UUID):
+    row = get_container().people.get_snapshot(person_id)
+    if row is None or row["snapshot"] is None:
+        raise AppError(ErrorCode.PERSON_NOT_FOUND, "No snapshot for this person")
+    return Response(content=bytes(row["snapshot"]), media_type=row["snapshot_mime"] or "image/jpeg")
+
+
+@router.patch("/api/person/{person_id}")
+def assign_person_name(person_id: uuid.UUID, body: PersonAssign):
+    c = get_container()
+    c.people.assign_name(person_id, body.name, body.external_id)
+    return ok(_person_out(c.people.get(person_id)))
 
 
 @router.delete("/api/person/{person_id}")

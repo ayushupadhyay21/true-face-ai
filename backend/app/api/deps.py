@@ -35,7 +35,7 @@ def build_container(settings: Settings | None = None) -> Container:
     meta = EmbeddingMeta(rec.info.name, rec.info.version, rec.embedding_dimension, registry.alignment.version)
     people, sessions, vectors = PeopleRepository(db), SessionRepository(db), VectorSearchService(db)
     engine = SessionEngine(settings, FrameAnalyzer(registry, settings), sessions, people, vectors, meta)
-    live = LiveTracker(settings, registry, vectors, meta)
+    live = LiveTracker(settings, registry, people, vectors, meta)
     return Container(settings, db, registry, people, sessions, vectors, engine, live)
 
 

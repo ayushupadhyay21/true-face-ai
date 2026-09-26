@@ -31,7 +31,10 @@ Session outcomes (`error_code` / `result`): NO_FACE (frame-level, the session wa
 | GET | `/health` | – | `{status, database, database_ok}` |
 | GET | `/health/models` | – | Model names and versions, embedding dimension, preprocessing version, `identity_threshold`, `calibrated`, `liveness_threshold` |
 | POST | `/api/person` | `{name, external_id?}` | Person (status `PENDING` until enrolled) |
+| GET | `/api/person` | – (optional `?status=` filter, e.g. `UNASSIGNED`) | List of people |
 | GET | `/api/person/{id}` | – | Person plus `embedding_count` |
+| GET | `/api/person/{id}/snapshot` | – | The person's aligned-crop image bytes (404 if none), only ever set for auto-bucketed `UNASSIGNED` people |
+| PATCH | `/api/person/{id}` | `{name, external_id?}` | Names an `UNASSIGNED` person and flips them to `ACTIVE` |
 | DELETE | `/api/person/{id}` | – | `{deleted}` (cascades to embeddings) |
 | POST | `/api/enrollment/start` | `{person_id}` | SessionView |
 | POST | `/api/enrollment/frame` | FrameSubmit | SessionView plus `frame` |
@@ -60,11 +63,18 @@ Each entry in `faces` has these fields:
 |---|---|
 | `track_id` | Stable id for the same face across frames |
 | `bbox` | `[x1, y1, x2, y2]`, normalised 0–1 in raw image coordinates |
-| `state` | `CHECKING` (fewer than 5 liveness frames), `LIVE`, `KNOWN`, `UNKNOWN`, `SPOOF`, or `TOO_SMALL` |
+| `state` | `CHECKING` (fewer than 5 liveness frames), `LIVE`, `KNOWN`, `UNASSIGNED`, `UNKNOWN`, `SPOOF`, or `TOO_SMALL` |
 | `label` | Text to show on the box |
 | `liveness_score` | Mean liveness score for this face |
-| `name`, `person_id` | Set **only** when the state is `KNOWN` |
+| `name` | Set **only** when the state is `KNOWN` |
+| `person_id` | Set when the state is `KNOWN` or `UNASSIGNED` |
 | `similarity` | Best match score for this face |
+
+`UNASSIGNED` means the face is real (passed liveness) but has no gallery match, so it was auto-bucketed
+into a new `people` row (`LIVE_AUTO_ENROLL_UNKNOWN=true`, the default) — see DATABASE.md "Unassigned
+people". Name it with `PATCH /api/person/{person_id}`; the same unnamed face reuses the same `person_id`
+if it reappears, in this session or a later one. Set `LIVE_AUTO_ENROLL_UNKNOWN=false` to get the old
+`UNKNOWN` (no id, no snapshot) behavior instead.
 
 A live session is dropped after 60 s without frames, and at most 8 can be open at once.
 

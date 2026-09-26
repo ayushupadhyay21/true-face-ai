@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { toApiError } from '../../core/api-error';
@@ -33,7 +34,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  */
 @Component({
   selector: 'app-live',
-  imports: [CameraSelectComponent, IconComponent],
+  imports: [CameraSelectComponent, IconComponent, RouterLink],
   providers: [CameraService],
   templateUrl: './live.component.html',
 })
@@ -57,12 +58,18 @@ export class LiveComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly faceRows = computed(() =>
     this.faces().map((f) => ({
       id: f.track_id,
-      title: f.state === 'KNOWN' ? f.name || f.label || 'Known' : f.label || stateChipText(f.state),
+      title:
+        f.state === 'KNOWN' ? f.name || f.label || 'Known' :
+        f.state === 'UNASSIGNED' ? 'Unnamed face' :
+        f.label || stateChipText(f.state),
       similarity: f.state === 'KNOWN' ? formatSimilarity(f.similarity) : null,
       chip: stateChipText(f.state),
       tone: faceStyle(f).tone,
     })),
   );
+
+  /** Faces auto-bucketed but not yet named (see faceStyle/UNASSIGNED). Surfaced as a "name them" prompt. */
+  protected readonly unnamedCount = computed(() => this.faces().filter((f) => f.state === 'UNASSIGNED').length);
 
   private runId = 0;
   private liveId: string | null = null;

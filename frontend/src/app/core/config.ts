@@ -4,8 +4,10 @@ export const API_BASE_URL = 'http://localhost:8000';
 /** Pause between one frame response and the next capture (ms). */
 export const FRAME_DELAY_MS = 120;
 
-/** Pause between frames on the Live (multi-face) page (ms). */
-export const LIVE_FRAME_DELAY_MS = 60;
+/** Pause between frames on the Live (multi-face) page (ms). Kept at 0 (not removed) so the
+ * loop still yields a tick between frames; the server round-trip already paces capture rate,
+ * so any added delay here is pure extra latency before a face gets labelled. */
+export const LIVE_FRAME_DELAY_MS = 0;
 
 /** Max captured frame size; frames are scaled down to fit, never up. */
 export const CAPTURE_MAX_WIDTH = 640;

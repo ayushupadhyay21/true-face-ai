@@ -23,7 +23,7 @@ log = logging.getLogger("app")
 
 app = FastAPI(title="Face Liveness Research API", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
-                   allow_methods=["GET", "POST", "DELETE"], allow_headers=["Content-Type"])
+                   allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Content-Type"])
 app.include_router(router)
 
 

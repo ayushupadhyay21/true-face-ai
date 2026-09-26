@@ -101,6 +101,11 @@ class Settings(BaseSettings):
     identity_threshold_override: float | None = Field(default=None, description="Research use only")
     search_top_k: int = 5
 
+    # --- Live mode: unknown-face bucketing ---------------------------------------------------
+    # When a live-mode track has no match in the gallery, auto-create an UNASSIGNED person with
+    # a small aligned-crop snapshot (not the raw frame), so an operator can name them later.
+    live_auto_enroll_unknown: bool = True
+
     # --- API -------------------------------------------------------------------------------
     max_frame_bytes: int = 2_000_000
     max_frame_side: int = 1280

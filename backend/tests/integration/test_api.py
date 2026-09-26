@@ -62,6 +62,20 @@ def test_person_crud_and_validation(client):
     assert client.delete(f"/api/person/{pid}").status_code == 404
 
 
+def test_unassigned_person_list_snapshot_and_assign(client):
+    row = deps.get_container().people.create_unassigned(b"fakejpeg", "image/jpeg")
+    pid = row["id"]
+    listed = client.get("/api/person", params={"status": "UNASSIGNED"}).json()["data"]
+    assert any(p["id"] == str(pid) for p in listed)
+
+    snap = client.get(f"/api/person/{pid}/snapshot")
+    assert snap.status_code == 200 and snap.content == b"fakejpeg" and snap.headers["content-type"] == "image/jpeg"
+    assert client.get(f"/api/person/{uuid.uuid4()}/snapshot").status_code == 404
+
+    r = client.patch(f"/api/person/{pid}", json={"name": "Jamie"})
+    assert r.status_code == 200 and r.json()["data"]["name"] == "Jamie" and r.json()["data"]["status"] == "ACTIVE"
+
+
 def test_recognition_frame_flow_and_errors(client, face_img):
     s = client.post("/api/recognition/start").json()["data"]
     sid = s["session_id"]

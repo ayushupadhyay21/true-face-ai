@@ -12,9 +12,15 @@ face is tracked across frames (greedy IoU matching), and each track gets its own
     It is hidden again if the track's liveness drops.
   * If a new embedding does not match the track's own mean embedding, a different face
     probably took the tracked position, so the track is reset.
+  * If `live_auto_enroll_unknown` is on (default): a LIVE track with no gallery match gets its
+    own UNASSIGNED person row, with a small aligned-crop snapshot (never the raw frame) so an
+    operator can name them later, Google-Photos-style. Seeing the same unnamed face again reuses
+    that same person row instead of creating a new one, because the search below is not
+    restricted to ACTIVE people.
 
 No active challenge runs in this mode, so it is weaker against video replay than a
-verification session (see SECURITY.md). Frames and embeddings are kept in memory only.
+verification session (see SECURITY.md). Frames are kept in memory only; the only thing
+ever written to the database here is an unassigned person's embedding and crop.
 """
 from __future__ import annotations
 
@@ -24,6 +30,7 @@ import uuid
 from collections import deque
 from dataclasses import dataclass, field
 
+import cv2
 import numpy as np
 
 from app.core.config import Settings, load_identity_threshold
@@ -53,12 +60,14 @@ class Track:
     bbox: np.ndarray
     scores: deque = field(default_factory=lambda: deque(maxlen=LIVE_WINDOW))
     embeddings: list[np.ndarray] = field(default_factory=list)
-    match: dict | None = None  # best gallery match for the mean embedding
+    match: dict | None = None  # best gallery match for the mean embedding, any status
+    own_person_id: uuid.UUID | None = None  # the ACTIVE match, or an UNASSIGNED person we bucketed this face into
     missed: int = 0
 
     def reset_identity(self) -> None:
         self.embeddings.clear()
         self.match = None
+        self.own_person_id = None
 
 
 @dataclass
@@ -72,9 +81,10 @@ class LiveSession:
 
 
 class LiveTracker:
-    def __init__(self, settings: Settings, registry, vectors, meta: EmbeddingMeta):
+    def __init__(self, settings: Settings, registry, people, vectors, meta: EmbeddingMeta):
         self.s = settings
         self.r = registry
+        self.people = people
         self.vectors = vectors
         self.meta = meta
         self._sessions: dict[uuid.UUID, LiveSession] = {}
@@ -181,15 +191,35 @@ class LiveTracker:
                     if float(emb @ ref) < thr:  # a different face took over this track position
                         track.reset_identity()
                 track.embeddings.append(emb)
-                probe = self.r.embedding.mean_embedding(np.array(track.embeddings))
-                matches = self.vectors.search(probe, self.meta, top_k=1)
-                track.match = matches[0] if matches else None
+                if track.own_person_id is None:  # already identified: no need to re-query the DB every frame
+                    probe = self.r.embedding.mean_embedding(np.array(track.embeddings))
+                    # Not restricted to ACTIVE: an UNASSIGNED person seen again reuses their own row.
+                    matches = self.vectors.search(probe, self.meta, top_k=1, only_active=False)
+                    track.match = matches[0] if matches else None
+                    if track.match is not None and track.match["similarity"] >= thr:
+                        track.own_person_id = track.match["person_id"]
+                    elif self.s.live_auto_enroll_unknown and track.own_person_id is None:
+                        track.match = self._create_unknown(probe, aligned)
+                        track.own_person_id = track.match["person_id"]
 
         m = track.match
-        if m is not None and m["similarity"] >= thr:
+        if m is not None and m["similarity"] >= thr and m["status"] == "ACTIVE":
             return {**base, "state": "KNOWN", "label": m["name"], "liveness_score": round(mean, 4),
                     "name": m["name"], "person_id": str(m["person_id"]), "similarity": round(m["similarity"], 4)}
+        if track.own_person_id is not None:
+            return {**base, "state": "UNASSIGNED", "label": m["name"] if m else None,
+                    "liveness_score": round(mean, 4), "name": None, "person_id": str(track.own_person_id),
+                    "similarity": round(m["similarity"], 4) if m else None}
         label = "Unknown" if track.embeddings else "Look at the camera"
         return {**base, "state": "UNKNOWN" if track.embeddings else "LIVE", "label": label,
                 "liveness_score": round(mean, 4), "name": None, "person_id": None,
                 "similarity": round(m["similarity"], 4) if m else None}
+
+    def _create_unknown(self, probe: np.ndarray, aligned: np.ndarray) -> dict:
+        """Bucket a LIVE, unmatched face under a new UNASSIGNED person (crop, never the raw frame)."""
+        ok, buf = cv2.imencode(".jpg", aligned)
+        snapshot = buf.tobytes() if ok else None
+        person = self.people.create_unassigned(snapshot, "image/jpeg" if ok else None)
+        self.vectors.insert(person["id"], probe, self.meta, "CENTER", None)
+        return {"person_id": person["id"], "name": person["name"], "external_id": person["external_id"],
+                "status": "UNASSIGNED", "similarity": 1.0, "matched_embeddings": 1}

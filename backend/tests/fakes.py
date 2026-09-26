@@ -111,11 +111,31 @@ class FakePeople:
         pid = uuid.uuid4()
         now = datetime.now(timezone.utc)
         self.rows[pid] = {"id": pid, "name": name, "external_id": external_id, "status": status,
-                          "created_at": now, "updated_at": now, "embedding_count": 0}
+                          "created_at": now, "updated_at": now, "embedding_count": 0,
+                          "snapshot": None, "snapshot_mime": None}
         return self.rows[pid]
+
+    def create_unassigned(self, snapshot, snapshot_mime):
+        row = self.create(f"Unknown-{uuid.uuid4().hex[:8]}", None, "UNASSIGNED")
+        row["snapshot"], row["snapshot_mime"] = snapshot, snapshot_mime
+        return row
 
     def get(self, pid):
         return self.rows.get(pid)
+
+    def get_snapshot(self, pid):
+        row = self.rows.get(pid)
+        return None if row is None else {"snapshot": row["snapshot"], "snapshot_mime": row["snapshot_mime"]}
+
+    def list(self, status=None):
+        rows = self.rows.values()
+        return [r for r in rows if status is None or r["status"] == status]
+
+    def assign_name(self, pid, name, external_id=None):
+        row = self.rows[pid]
+        row["name"], row["status"] = name, "ACTIVE"
+        row["external_id"] = external_id or row["external_id"]
+        return row
 
     def set_status(self, pid, status):
         self.rows[pid]["status"] = status
@@ -141,5 +161,6 @@ class FakeVectors:
                 continue
             best[pid] = max(best.get(pid, -1.0), float(e @ embedding))
         rows = [{"person_id": pid, "name": self.people.get(pid)["name"],
-                 "external_id": self.people.get(pid)["external_id"], "similarity": s} for pid, s in best.items()]
+                 "external_id": self.people.get(pid)["external_id"], "status": self.people.get(pid)["status"],
+                 "similarity": s} for pid, s in best.items()]
         return sorted(rows, key=lambda r: r["similarity"], reverse=True)[:top_k]

@@ -24,7 +24,13 @@ export type IconName =
   | 'hand'
   | 'frame'
   | 'sparkle'
-  | 'info';
+  | 'info'
+  | 'edit'
+  | 'trash'
+  | 'search'
+  | 'settings'
+  | 'user-circle'
+  | 'database';
 
 /** Small inline SVG icon set (stroke icons, currentColor). Purely decorative: aria-hidden. */
 @Component({
@@ -81,6 +87,19 @@ export type IconName =
         }
         @case ('frame') { <svg:rect x="3" y="3" width="18" height="18" rx="3" /><svg:circle cx="12" cy="11" r="3.5" /><svg:path d="M7 19c1-2.5 2.8-3.5 5-3.5s4 1 5 3.5" /> }
         @case ('sparkle') { <svg:path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><svg:path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z" /> }
+        @case ('edit') { <svg:path d="M4 20l.9-3.6L16.4 5 19 7.6 7.6 19z" /><svg:path d="M14.5 6.9L17.1 9.5" /> }
+        @case ('trash') { <svg:path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M18 7l-.8 12a2 2 0 0 1-2 1.8H8.8a2 2 0 0 1-2-1.8L6 7" /><svg:path d="M10 11v6M14 11v6" /> }
+        @case ('search') { <svg:circle cx="11" cy="11" r="7" /><svg:path d="M20 20l-4.3-4.3" /> }
+        @case ('settings') {
+          <svg:circle cx="12" cy="12" r="3" />
+          <svg:path d="M19.4 13.5c.1-.5.1-1 0-1.5l1.6-1.2-1.5-2.6-1.9.5a7.8 7.8 0 0 0-1.3-.8L16 5.5h-3l-.3 1.9c-.5.2-.9.5-1.3.8l-1.9-.5-1.5 2.6L9.6 12c-.1.5-.1 1 0 1.5l-1.6 1.2 1.5 2.6 1.9-.5c.4.3.8.6 1.3.8l.3 1.9h3l.3-1.9c.5-.2.9-.5 1.3-.8l1.9.5 1.5-2.6z" />
+        }
+        @case ('user-circle') { <svg:circle cx="12" cy="12" r="9" /><svg:circle cx="12" cy="10" r="3" /><svg:path d="M6.5 18.5c1-2.5 3-3.8 5.5-3.8s4.5 1.3 5.5 3.8" /> }
+        @case ('database') {
+          <svg:ellipse cx="12" cy="6" rx="8" ry="3" />
+          <svg:path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
+          <svg:path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+        }
         @default { <svg:circle cx="12" cy="12" r="9" /><svg:path d="M12 11v5M12 8v.01" /> }
       }
     </svg>

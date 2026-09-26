@@ -21,6 +21,10 @@ class PersonCreate(BaseModel):
         return v
 
 
+class PersonAssign(PersonCreate):
+    """Name a previously UNASSIGNED (auto-bucketed live-mode) person."""
+
+
 class PersonOut(BaseModel):
     id: uuid.UUID
     name: str

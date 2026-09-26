@@ -27,7 +27,7 @@ pgvector is not bundled with the EDB Windows installer. It is built from source 
 
 | Table | Purpose | Key constraints |
 |---|---|---|
-| `people` | Enrolled identities | `status IN (ACTIVE, PENDING, DISABLED)`; `external_id` UNIQUE. Only `ACTIVE` people are searched. |
+| `people` | Enrolled identities | `status IN (ACTIVE, PENDING, DISABLED, UNASSIGNED)`; `external_id` UNIQUE. Only `ACTIVE` people are searched by normal recognition. `UNASSIGNED` = auto-bucketed by live mode, not yet named (see below); `snapshot`/`snapshot_mime` hold their small aligned-crop image. |
 | `face_embeddings` | One row per stored sample | FK `person_id` → people **ON DELETE CASCADE**. `embedding vector` (no fixed dimension), `CHECK vector_dims(embedding) = embedding_dimension`. Also stores `model_name`, `model_version`, `preprocessing_version`, `pose`, `quality_score`. |
 | `recognition_sessions` | One row per enrollment or recognition attempt | `session_id` UNIQUE; status CHECK (CREATED, IN_PROGRESS, PASSED, FAILED, EXPIRED); `challenge` JSONB (challenge_id, expected_actions, current_action, created_at, expires_at); `completed_at` set once |
 | `recognition_results` | Final decision per session | `session_id` UNIQUE FK → sessions CASCADE; `person_id` FK SET NULL; `result` CHECK (KNOWN, UNKNOWN, LIVENESS_FAILED, CHALLENGE_FAILED, MULTIPLE_FACES, EXPIRED, ENROLLED); stores the similarity, liveness score, threshold and model |
@@ -41,10 +41,22 @@ Indexes: embeddings by person and by (model_name, model_version); sessions by st
 
 1. Casts each embedding to `vector(dim)`.
 2. Computes cosine similarity `1 - (embedding <=> query)`.
-3. Filters on the exact model name, version, dimension and preprocessing version, and on people with `status = 'ACTIVE'`.
-4. Groups by person (best embedding per person) and returns the top k.
+3. Filters on the exact model name, version, dimension and preprocessing version, and, when `only_active=True` (the default), on people with `status = 'ACTIVE'`.
+4. Groups by person (best embedding per person) and returns the top k, now including `status`.
 
 The search is exact (sequential scan), which is fine for a research gallery. An HNSW index needs a fixed-dimension column; add one once a single model is final, for example `CREATE INDEX ON face_embeddings USING hnsw ((embedding::vector(512)) vector_cosine_ops)` together with a matching expression in the query.
+
+## Unassigned people (live mode)
+
+Migration `002_unknown_people.sql` adds the `UNASSIGNED` status plus `snapshot`/`snapshot_mime` on `people`.
+When live mode (`LiveTracker`, `LIVE_AUTO_ENROLL_UNKNOWN=true`, the default) sees a LIVE face with no
+gallery match, it creates a `people` row with `status='UNASSIGNED'`, a placeholder name, and stores the
+small aligned 112x112 crop (JPEG) as `snapshot` — never the raw camera frame. The row's embedding is
+inserted into `face_embeddings` immediately so the same unnamed face is recognised as the same row next
+time (search always includes non-`ACTIVE` statuses for this comparison; `only_active` only gates whether
+a match is *reported as identity*). `PeopleRepository.assign_name` names the row and flips it to `ACTIVE`,
+after which it is searched like any enrolled person. API: `GET /api/person?status=UNASSIGNED` to list them,
+`GET /api/person/{id}/snapshot` for the image, `PATCH /api/person/{id}` to name one.
 
 ## Privacy
 

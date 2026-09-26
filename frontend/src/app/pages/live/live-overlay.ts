@@ -47,7 +47,7 @@ export function mirroredBoxRect(bbox: readonly number[], rect: Rect, elW: number
   };
 }
 
-export type FaceTone = 'known' | 'unknown' | 'neutral' | 'spoof' | 'small';
+export type FaceTone = 'known' | 'unassigned' | 'unknown' | 'neutral' | 'spoof' | 'small';
 
 export interface FaceStyle {
   tone: FaceTone;
@@ -71,6 +71,8 @@ export function faceStyle(face: Pick<LiveFace, 'state' | 'label' | 'name' | 'sim
         detail: formatSimilarity(face.similarity),
         dashed: false,
       };
+    case 'UNASSIGNED':
+      return { tone: 'unassigned', colorVar: '--warn-solid', text: 'Unnamed', detail: null, dashed: false };
     case 'UNKNOWN':
       return { tone: 'unknown', colorVar: '--accent', text: 'Unknown', detail: null, dashed: false };
     case 'SPOOF':
@@ -96,6 +98,7 @@ export function formatSimilarity(similarity: number | null | undefined): string 
 export function stateChipText(state: LiveFaceState): string {
   switch (state) {
     case 'KNOWN': return 'Known';
+    case 'UNASSIGNED': return 'Unnamed';
     case 'UNKNOWN': return 'Unknown';
     case 'SPOOF': return 'Spoof';
     case 'TOO_SMALL': return 'Too small';

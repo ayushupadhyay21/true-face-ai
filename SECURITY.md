@@ -17,7 +17,7 @@ This is a research prototype. **It is not claimed to be spoof-proof.** Everythin
 | A session completes once: `completed_at` is set with an atomic `UPDATE … WHERE completed_at IS NULL`, and a second completion returns 409. | `mark_completed` |
 | Face swap mid-session: the face centre may not jump by more than 0.8 × the face width between frames, and the final CENTER embedding must match the passive-phase embedding. | engine |
 | A face that already matches another person cannot be enrolled under a new identity. | `_complete_enrollment` |
-| No raw images are stored. Frames are processed in memory only; `STORE_RAW_FRAMES=false` and no code path writes frames. | frame_analyzer / routes |
+| No raw camera frames are stored. Frames are processed in memory only; `STORE_RAW_FRAMES=false` and no code path writes frames. **Exception:** live mode, when it auto-buckets an unmatched face (`LIVE_AUTO_ENROLL_UNKNOWN=true`, default), stores the small aligned 112x112 crop of that face (never the raw frame) so an operator can name them later. See DATABASE.md "Unassigned people". | frame_analyzer / routes / live_tracker |
 | No stack traces in responses. Unhandled errors return `INTERNAL_ERROR`; details go to `logs/backend.log`. | `main.py` |
 | No secrets in code. DB credentials come from `.env` (git-ignored); the admin password is only prompted for. | config, `setup_database.py` |
 

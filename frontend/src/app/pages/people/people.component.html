@@ -1,0 +1,172 @@
+<section class="page">
+  <header class="page-header people-header-row">
+    <div>
+      <span class="eyebrow"><app-icon name="users" /> People</span>
+      <h1>People</h1>
+      <p class="lead">Manage known and unknown faces. Faces seen in Live View that are not recognized will appear
+        in the Unnamed section automatically.</p>
+      <div class="actions">
+        <button type="button" class="secondary" (click)="refresh()" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span> Loading...
+          } @else {
+            <app-icon name="refresh" /> Refresh
+          }
+        </button>
+        <a routerLink="/enroll" class="link-button"><app-icon name="user-plus" /> Enroll New Face</a>
+      </div>
+    </div>
+    <span class="people-hero-art"><app-icon name="frame" /></span>
+  </header>
+
+  @if (loadError(); as e) {
+    <div class="banner banner-danger" role="alert"><app-icon name="alert" /><p>{{ e }}</p></div>
+  }
+
+  <div class="stat-grid">
+    <div class="card stat-card">
+      <span class="stat-icon tone-blue"><app-icon name="users" /></span>
+      <div>
+        <p class="stat-label">Total People</p>
+        <p class="stat-value">{{ totalPeople() }}</p>
+        <p class="stat-sub">Known faces in database</p>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <span class="stat-icon tone-ok"><app-icon name="check-circle" /></span>
+      <div>
+        <p class="stat-label">Known Faces</p>
+        <p class="stat-value">{{ activeCount() }}</p>
+        <p class="stat-sub">Enrolled and active</p>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <span class="stat-icon tone-warn"><app-icon name="question" /></span>
+      <div>
+        <p class="stat-label">Unnamed Faces</p>
+        <p class="stat-value">{{ cards().length }}</p>
+        <p class="stat-sub">Detected but not recognized</p>
+      </div>
+    </div>
+    <div class="card stat-card">
+      <span class="stat-icon"><app-icon name="database" /></span>
+      <div>
+        <p class="stat-label">Total Embeddings</p>
+        <p class="stat-value">{{ totalEmbeddings() }}</p>
+        <p class="stat-sub">Face embeddings stored</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="people-columns">
+    <div>
+      <div class="section-head">
+        <h2 class="card-title"><app-icon name="question" /> Unnamed Faces</h2>
+        <span class="count-chip">{{ cards().length }}</span>
+        <select class="sort-select" [ngModel]="sortOrder()" (ngModelChange)="setSortOrder($event)" aria-label="Sort unnamed faces">
+          <option value="recent">Sort by: Recent</option>
+          <option value="oldest">Sort by: Oldest</option>
+        </select>
+      </div>
+      @if (!loading() && cards().length === 0 && !loadError()) {
+        <div class="card">
+          <p class="muted">No unnamed faces right now. New faces will appear here automatically when Live View
+            sees a face it doesn't recognize.</p>
+        </div>
+      }
+      <div class="people-grid">
+        @for (c of sortedCards(); track c.id) {
+          <div class="card person-card">
+            <img class="person-thumb" [src]="c.snapshotUrl" (error)="hideOnError($event)" (click)="showPreview(c.snapshotUrl, 'Unnamed face')"
+                 alt="Unnamed face snapshot" loading="lazy" />
+            <div class="field">
+              <span>Name <span class="req">*</span></span>
+              <input type="text" [ngModel]="c.name" (ngModelChange)="setName(c.id, $event)"
+                     placeholder="Who is this?" maxlength="200" [disabled]="c.saving"
+                     (keydown.enter)="save(c)" />
+            </div>
+            <div class="field">
+              <span>External ID <span class="opt">(optional)</span></span>
+              <input type="text" [ngModel]="c.externalId" (ngModelChange)="setExternalId(c.id, $event)"
+                     placeholder="e.g. employee id" maxlength="200" [disabled]="c.saving"
+                     (keydown.enter)="save(c)" />
+            </div>
+            @if (c.error) {
+              <span class="field-error"><app-icon name="alert" /> {{ c.error }}</span>
+            }
+            <div class="actions">
+              <button type="button" class="block" (click)="save(c)" [disabled]="c.saving || c.deleting">
+                @if (c.saving) {
+                  <span class="spinner" aria-hidden="true"></span> Saving...
+                } @else {
+                  <app-icon name="check" /> Save name
+                }
+              </button>
+              <button type="button" class="danger-ghost" (click)="deleteCard(c)" [disabled]="c.saving || c.deleting"
+                      aria-label="Delete this unnamed face" title="Delete">
+                <app-icon name="trash" />
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div>
+      <div class="section-head">
+        <h2 class="card-title"><app-icon name="check-circle" /> Known Faces</h2>
+        <span class="count-chip">{{ known().length }}</span>
+        <span class="search-box">
+          <app-icon name="search" />
+          <input type="text" [ngModel]="search()" (ngModelChange)="setSearch($event)" placeholder="Search people..." />
+        </span>
+      </div>
+      @if (!loading() && known().length === 0 && !loadError()) {
+        <div class="card"><p class="muted">No known people yet. Enroll someone, or name an unnamed face on the left.</p></div>
+      }
+      @if (!loading() && known().length > 0 && filteredKnown().length === 0) {
+        <div class="card"><p class="muted">No people match "{{ search() }}".</p></div>
+      }
+      <div class="known-card-list">
+        @for (k of filteredKnown(); track k.id) {
+          <div class="card known-card-row">
+            <img class="known-thumb" [src]="k.snapshotUrl" (error)="hideOnError($event)" (click)="showPreview(k.snapshotUrl, k.name)"
+                 alt="" loading="lazy" />
+            <div class="known-meta">
+              <span class="known-meta-row">
+                <span class="known-name">{{ k.name }}</span>
+                <span class="face-chip" [class]="'tone-' + (k.status === 'ACTIVE' ? 'known' : 'unknown')">{{ k.status }}</span>
+              </span>
+              <span class="known-sub">
+                <app-icon name="database" /> {{ k.embeddingCount }} embedding{{ k.embeddingCount === 1 ? '' : 's' }}
+                @if (k.externalId) { &nbsp;·&nbsp; {{ k.externalId }} }
+                &nbsp;·&nbsp; <app-icon name="clock" /> Added {{ k.createdAt | date: 'd MMM y' }}
+              </span>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="secondary" (click)="showPreview(k.snapshotUrl, k.name)" aria-label="View snapshot" title="View">
+                <app-icon name="eye" />
+              </button>
+              <button type="button" class="danger-ghost" (click)="deleteKnown(k)" [disabled]="k.deleting"
+                      aria-label="Delete this person" title="Delete">
+                <app-icon name="trash" />
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (preview(); as p) {
+    <div class="lightbox-backdrop" (click)="closePreview()">
+      <div class="lightbox" (click)="$event.stopPropagation()">
+        <button type="button" class="danger-ghost lightbox-close" (click)="closePreview()" aria-label="Close preview">
+          <app-icon name="x" />
+        </button>
+        <img [src]="p.url" [alt]="p.name + ' snapshot'" />
+        <span class="face-name">{{ p.name }}</span>
+      </div>
+    </div>
+  }
+</section>

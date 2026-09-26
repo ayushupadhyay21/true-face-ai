@@ -1,6 +1,6 @@
-"""PostgreSQL access (psycopg 3 + pgvector). Small connection pool-free helper: the
-local research server handles one camera session at a time, so a connection per request
-is enough and keeps the dependency list short."""
+"""PostgreSQL access (psycopg 3 + pgvector), backed by a small psycopg_pool ConnectionPool
+so live mode's per-tracked-face DB round-trips reuse connections instead of paying full
+connect setup on every one."""
 from __future__ import annotations
 
 import logging
@@ -11,6 +11,7 @@ from typing import Iterator
 import psycopg
 from pgvector.psycopg import register_vector
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from app.core.config import PROJECT_ROOT, Settings
 from app.core.errors import AppError, ErrorCode
@@ -20,8 +21,15 @@ MIGRATIONS_DIR = PROJECT_ROOT / "database" / "migrations"
 
 
 class Database:
+    """Small pooled connection helper. Live mode does a DB round-trip per tracked face
+    (vector search / auto-enroll), so a pool avoids paying full TCP+TLS+auth setup on every
+    one of those instead of just once per pool connection."""
+
     def __init__(self, conninfo: str):
         self.conninfo = conninfo
+        self._pool = ConnectionPool(
+            conninfo, min_size=1, max_size=8, kwargs={"row_factory": dict_row}, configure=register_vector,
+        )
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "Database":
@@ -30,19 +38,14 @@ class Database:
     @contextmanager
     def connect(self) -> Iterator[psycopg.Connection]:
         try:
-            conn = psycopg.connect(self.conninfo, row_factory=dict_row, connect_timeout=5)
-        except psycopg.Error as e:
+            with self._pool.connection() as conn:
+                yield conn  # pool commits on success, rolls back on exception
+        except psycopg.OperationalError as e:
             log.error("database connection failed: %s", e)
             raise AppError(ErrorCode.DATABASE_ERROR, "Database unavailable") from e
-        try:
-            register_vector(conn)
-            with conn:  # commit on success, rollback on exception
-                yield conn
         except psycopg.Error as e:
             log.exception("database error")
             raise AppError(ErrorCode.DATABASE_ERROR, "Database error") from e
-        finally:
-            conn.close()
 
     def ping(self) -> dict:
         with self.connect() as c:

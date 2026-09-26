@@ -60,6 +60,9 @@ export interface PersonCreateRequest {
   external_id?: string;
 }
 
+/** Names a previously UNASSIGNED (auto-bucketed live-mode) person; flips them to ACTIVE. */
+export type PersonAssignRequest = PersonCreateRequest;
+
 export type SessionStatus = 'CREATED' | 'IN_PROGRESS' | 'PASSED' | 'FAILED' | 'EXPIRED';
 export type SessionPhase = 'PASSIVE' | 'ACTIVE' | 'DONE';
 export type ChallengeAction = 'LOOK_LEFT' | 'LOOK_RIGHT' | 'LOOK_UP' | 'LOOK_DOWN' | 'BLINK' | 'CENTER';
@@ -130,7 +133,7 @@ export interface RecognitionResult {
 
 // ---------- Live multi-face tracking (/api/live/*) ----------
 
-export type LiveFaceState = 'CHECKING' | 'LIVE' | 'KNOWN' | 'UNKNOWN' | 'SPOOF' | 'TOO_SMALL';
+export type LiveFaceState = 'CHECKING' | 'LIVE' | 'KNOWN' | 'UNASSIGNED' | 'UNKNOWN' | 'SPOOF' | 'TOO_SMALL';
 
 export interface LiveStartData {
   live_id: string;

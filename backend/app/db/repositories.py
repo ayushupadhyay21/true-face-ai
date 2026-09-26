@@ -48,6 +48,40 @@ class PeopleRepository:
         with self.db.connect() as c:
             return c.execute("DELETE FROM people WHERE id = %s", (person_id,)).rowcount > 0
 
+    def list(self, status: str | None = None) -> list[dict]:
+        sql = ("SELECT p.*, (SELECT count(*) FROM face_embeddings e WHERE e.person_id = p.id) AS embedding_count "
+              "FROM people p")
+        with self.db.connect() as c:
+            if status:
+                return c.execute(sql + " WHERE p.status = %s ORDER BY p.created_at DESC", (status,)).fetchall()
+            return c.execute(sql + " ORDER BY p.created_at DESC").fetchall()
+
+    def create_unassigned(self, snapshot: bytes | None, snapshot_mime: str | None) -> dict:
+        """Auto-bucketed live-mode face with no gallery match yet. See MODEL_DOCUMENTATION.md."""
+        name = f"Unknown-{uuid.uuid4().hex[:8]}"
+        with self.db.connect() as c:
+            return c.execute(
+                "INSERT INTO people(name, status, snapshot, snapshot_mime) VALUES (%s, 'UNASSIGNED', %s, %s) "
+                "RETURNING *", (name, snapshot, snapshot_mime)).fetchone()
+
+    def assign_name(self, person_id: uuid.UUID, name: str, external_id: str | None = None) -> dict:
+        """Name a previously UNASSIGNED person; flips them ACTIVE so they can be recognised."""
+        with self.db.connect() as c:
+            try:
+                row = c.execute(
+                    "UPDATE people SET name = %s, external_id = COALESCE(%s, external_id), status = 'ACTIVE', "
+                    "updated_at = now() WHERE id = %s AND status = 'UNASSIGNED' RETURNING *",
+                    (name, external_id, person_id)).fetchone()
+            except psycopg.errors.UniqueViolation as e:
+                raise AppError(ErrorCode.INVALID_REQUEST, "external_id already exists", 409) from e
+        if row is None:
+            raise AppError(ErrorCode.PERSON_NOT_FOUND, "Unassigned person not found")
+        return row
+
+    def get_snapshot(self, person_id: uuid.UUID) -> dict | None:
+        with self.db.connect() as c:
+            return c.execute("SELECT snapshot, snapshot_mime FROM people WHERE id = %s", (person_id,)).fetchone()
+
 
 class SessionRepository:
     def __init__(self, db: Database):
@@ -137,15 +171,16 @@ class VectorSearchService:
             raise AppError(ErrorCode.INVALID_REQUEST, "Query embedding dimension mismatch")
         status_filter = "AND p.status = 'ACTIVE'" if only_active else ""
         sql = f"""
-            SELECT person_id, name, external_id, max(similarity) AS similarity, count(*) AS matched_embeddings
+            SELECT person_id, name, external_id, status, max(similarity) AS similarity,
+                   count(*) AS matched_embeddings
             FROM (
-                SELECT e.person_id, p.name, p.external_id,
+                SELECT e.person_id, p.name, p.external_id, p.status,
                        1 - (e.embedding::vector({meta.embedding_dimension}) <=> %(q)s) AS similarity
                 FROM face_embeddings e JOIN people p ON p.id = e.person_id
                 WHERE e.model_name = %(m)s AND e.model_version = %(v)s
                   AND e.embedding_dimension = %(d)s AND e.preprocessing_version = %(pv)s {status_filter}
             ) s
-            GROUP BY person_id, name, external_id
+            GROUP BY person_id, name, external_id, status
             ORDER BY similarity DESC
             LIMIT %(k)s
         """

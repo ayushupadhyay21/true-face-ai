@@ -17,5 +17,15 @@ export const routes: Routes = [
     title: 'Enroll',
     loadComponent: () => import('./pages/enroll/enroll.component').then((m) => m.EnrollComponent),
   },
+  {
+    path: 'people',
+    title: 'People',
+    loadComponent: () => import('./pages/people/people.component').then((m) => m.PeopleComponent),
+  },
+  {
+    path: 'settings',
+    title: 'Settings',
+    loadComponent: () => import('./pages/settings/settings.component').then((m) => m.SettingsComponent),
+  },
   { path: '**', redirectTo: 'live' },
 ];

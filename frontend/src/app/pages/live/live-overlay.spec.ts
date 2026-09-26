@@ -70,6 +70,13 @@ describe('faceStyle', () => {
   it('UNKNOWN: accent "Unknown"', () => {
     expect(faceStyle({ ...base, state: 'UNKNOWN', label: 'whatever' })).toMatchObject({ colorVar: '--accent', text: 'Unknown' });
   });
+  it('UNASSIGNED: amber "Unnamed" (auto-bucketed, not yet named)', () => {
+    expect(faceStyle({ ...base, state: 'UNASSIGNED', label: 'Unknown-a1b2c3d4' })).toMatchObject({
+      tone: 'unassigned',
+      colorVar: '--warn-solid',
+      text: 'Unnamed',
+    });
+  });
   it('CHECKING / LIVE: neutral gray with the server label', () => {
     expect(faceStyle({ ...base, state: 'CHECKING', label: 'Checking liveness' })).toMatchObject({
       tone: 'neutral',
@@ -95,6 +102,7 @@ describe('small helpers', () => {
   it('stateChipText', () => {
     expect(stateChipText('TOO_SMALL')).toBe('Too small');
     expect(stateChipText('CHECKING')).toBe('Checking');
+    expect(stateChipText('UNASSIGNED')).toBe('Unnamed');
   });
   it('smoothRate', () => {
     expect(smoothRate(null, 100)).toBe(10);

@@ -14,6 +14,7 @@ import {
   LiveStopResult,
   ModelsHealthData,
   Person,
+  PersonAssignRequest,
   PersonCreateRequest,
   RecognitionResult,
   SessionView,
@@ -35,6 +36,26 @@ export class ApiService {
 
   createPerson(body: PersonCreateRequest): Promise<Person> {
     return this.post<Person>('/api/person', body);
+  }
+
+  /** Lists people, optionally filtered by status (e.g. 'UNASSIGNED' for unnamed live-mode faces). */
+  listPeople(status?: string): Promise<Person[]> {
+    return this.get<Person[]>('/api/person', status ? { status } : undefined);
+  }
+
+  /** Names a previously UNASSIGNED person and flips them to ACTIVE. */
+  assignPerson(personId: string, body: PersonAssignRequest): Promise<Person> {
+    return this.patch<Person>(`/api/person/${personId}`, body);
+  }
+
+  /** URL of a person's snapshot image (set only for auto-bucketed UNASSIGNED people). */
+  snapshotUrl(personId: string): string {
+    return `${API_BASE_URL}/api/person/${personId}/snapshot`;
+  }
+
+  /** Deletes a person and all their stored embeddings (cascades server-side). */
+  deletePerson(personId: string): Promise<{ deleted: string }> {
+    return this.delete<{ deleted: string }>(`/api/person/${personId}`);
   }
 
   startEnrollment(personId: string): Promise<SessionView> {
@@ -73,12 +94,20 @@ export class ApiService {
     return this.post<LiveStopResult>('/api/live/stop', { live_id: liveId });
   }
 
-  private get<T>(path: string): Promise<T> {
-    return this.unwrap<T>(this.http.get<Envelope<T>>(API_BASE_URL + path));
+  private get<T>(path: string, params?: Record<string, string>): Promise<T> {
+    return this.unwrap<T>(this.http.get<Envelope<T>>(API_BASE_URL + path, { params }));
   }
 
   private post<T>(path: string, body: unknown): Promise<T> {
     return this.unwrap<T>(this.http.post<Envelope<T>>(API_BASE_URL + path, body));
+  }
+
+  private patch<T>(path: string, body: unknown): Promise<T> {
+    return this.unwrap<T>(this.http.patch<Envelope<T>>(API_BASE_URL + path, body));
+  }
+
+  private delete<T>(path: string): Promise<T> {
+    return this.unwrap<T>(this.http.delete<Envelope<T>>(API_BASE_URL + path));
   }
 
   private unwrap<T>(obs: Observable<Envelope<T>>): Promise<T> {

@@ -36,6 +36,14 @@
         <span class="chip"><app-icon name="refresh" /> FPS <b>{{ fps() !== null ? fps()!.toFixed(1) : '-' }}</b></span>
         <span class="chip"><app-icon name="clock" /> Server <b>{{ serverMs() !== null ? serverMs()!.toFixed(0) + ' ms' : '-' }}</b></span>
       </div>
+
+      @if (unnamedCount() > 0) {
+        <div class="banner banner-warn">
+          <app-icon name="question" />
+          <p>{{ unnamedCount() }} unnamed face{{ unnamedCount() > 1 ? 's' : '' }} detected.
+            <a routerLink="/people">Name them</a> so they're recognized next time.</p>
+        </div>
+      }
     </div>
 
     <div class="stack">
