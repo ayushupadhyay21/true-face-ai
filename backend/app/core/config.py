@@ -72,6 +72,11 @@ class Settings(BaseSettings):
 
     # --- Active liveness ------------------------------------------------------------------
     active_liveness_enabled: bool = True
+    # Live View's own switch (separate from the session flag above): a silent, blink-only check
+    # per track before it is ever named -- no on-screen prompt, no session lifecycle. Blink is
+    # the only pool action that happens on its own within a few seconds without being asked; a
+    # deliberate head-turn does not, so it is never used here (see live_tracker.py).
+    live_active_liveness_enabled: bool = True
     challenge_length: int = 3  # random actions per session (a final CENTER is always appended)
     camera_mirrored: bool = False  # clients must send raw (un-mirrored) frames unless this is set
     challenge_timeout_s: float = 60.0  # whole session lifetime

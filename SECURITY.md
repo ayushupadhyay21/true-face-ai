@@ -30,18 +30,19 @@ This is a research prototype. **It is not claimed to be spoof-proof.** Everythin
 
 ## Live multi-face mode (`/api/live/*`, Live page)
 
-This mode shows every face in view, with a box and a name. It deliberately relaxes two verification rules:
+This mode shows every face in view, with a box and a name. It deliberately relaxes one verification rule:
 
 - **Several faces are allowed.** Each face is tracked and judged on its own.
-- **There is no active challenge.** Each face gets passive liveness only: the mean of a rolling window of up to 10 frame scores, starting after at least 5 frames.
+
+Each face still gets passive liveness (the mean of a rolling window of up to 10 frame scores, starting after at least 5 frames), and, if `LIVE_ACTIVE_LIVENESS_ENABLED=true` (default), it must also blink once before it is ever named -- evaluated with the same BLINK code as a verification session (`challenge.py`). This is a separate switch from the Recognize/Enroll session's `ACTIVE_LIVENESS_ENABLED`; either can be on independently. It runs **silently**: the face box shows the same "Look at the camera" label throughout and no prompt is ever shown, and it is BLINK-only (never a head-turn) because a real person blinks on their own within a few seconds without being asked, but does not turn their head on their own -- a random pool including head-turns would leave a cooperative user stuck. There is no hard failure or expiry either: a track that times out waiting for a blink is simply given a fresh window and keeps trying, since Live View has no bounded session lifecycle to fail out of. With this off, Live View falls back to passive-only, same as before.
 
 Rules that still hold:
 
 - A face's name is returned only while that face is LIVE and its similarity is at or above the calibrated threshold.
 - A face judged SPOOF has its cached identity cleared.
-- If a new embedding stops matching a face's own history, that face's identity is reset.
+- If a new embedding stops matching a face's own history, that face's identity is reset (including its blink-check progress: the new face must blink again).
 
-This makes the mode weaker than a verification session against video replay. Use the Recognize page (a verification session) when a single, stronger decision is needed.
+With this on, a static printed photo or a screen replay that never blinks can never be named. It is still weaker than a verification session against a pre-recorded video of the real person blinking on their own -- use the Recognize page when a single, stronger decision is needed.
 
 ## Known limitations (not mitigated)
 

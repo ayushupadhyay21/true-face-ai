@@ -17,10 +17,19 @@ face is tracked across frames (greedy IoU matching), and each track gets its own
     operator can name them later, Google-Photos-style. Seeing the same unnamed face again reuses
     that same person row instead of creating a new one, because the search below is not
     restricted to ACTIVE people.
+  * If `live_active_liveness_enabled` is on (default): before a LIVE track is ever named, it
+    must also blink once, evaluated with the same code as the verification session's BLINK
+    action (challenge.py). This is what stops a printed photo or a looping video from being
+    recognized -- the passive PAD model alone is a same-frame texture classifier with no motion
+    signal, so a good replay can pass it (see SECURITY.md). It is BLINK only, and it is silent
+    (the face box just shows "Look at the camera" throughout, no prompt): a real person blinks on
+    their own every few seconds without being asked, but does not turn their head on their own,
+    so a random pool including head-turns would leave a cooperative user stuck waiting on an
+    action they don't know to perform. This is a separate switch from `active_liveness_enabled`
+    (the Recognize/Enroll session challenge) -- one can be on without the other.
 
-No active challenge runs in this mode, so it is weaker against video replay than a
-verification session (see SECURITY.md). Frames are kept in memory only; the only thing
-ever written to the database here is an unassigned person's embedding and crop.
+Frames are kept in memory only; the only thing ever written to the database here is an
+unassigned person's embedding and crop.
 """
 from __future__ import annotations
 
@@ -37,6 +46,8 @@ from app.core.config import Settings, load_identity_threshold
 from app.core.errors import AppError, ErrorCode
 from app.db.repositories import EmbeddingMeta
 from app.ml.base import DetectedFace
+from app.ml.preprocessing.landmarks106 import eyes_openness
+from app.services.challenge import Action, ActionEvaluator, Baseline, Observation
 
 LIVE_WINDOW = 10  # rolling window of passive scores per track
 LIVE_MAX_EMBEDDINGS = 5  # embeddings averaged per track before the identity is cached
@@ -63,11 +74,23 @@ class Track:
     match: dict | None = None  # best gallery match for the mean embedding, any status
     own_person_id: uuid.UUID | None = None  # the ACTIVE match, or an UNASSIGNED person we bucketed this face into
     missed: int = 0
+    # Active liveness challenge (only used when active_liveness_enabled; see module docstring).
+    baseline_obs: list[tuple[float, float, float]] = field(default_factory=list)
+    baseline: Baseline | None = None
+    action: Action | None = None
+    evaluator: ActionEvaluator | None = None
+    action_started_at: float = 0.0
+    challenge_passed: bool = False
 
     def reset_identity(self) -> None:
         self.embeddings.clear()
         self.match = None
         self.own_person_id = None
+        self.baseline_obs.clear()
+        self.baseline = None
+        self.action = None
+        self.evaluator = None
+        self.challenge_passed = False
 
 
 @dataclass
@@ -181,6 +204,12 @@ class LiveTracker:
             return {**base, "state": "SPOOF", "label": "Spoof", "liveness_score": round(mean, 4),
                     "name": None, "person_id": None, "similarity": None}
 
+        if s.live_active_liveness_enabled and not track.challenge_passed:
+            challenge = self._challenge_step(track, frame, face, mean, base)
+            if challenge is not None:
+                return challenge
+            # else: the challenge was just satisfied on this very frame -- fall through below
+
         if len(track.embeddings) < LIVE_MAX_EMBEDDINGS:
             aligned = self.r.alignment.align(frame, face.landmarks)
             q = self.r.quality.evaluate(face, aligned, require_frontal=True)
@@ -214,6 +243,47 @@ class LiveTracker:
         return {**base, "state": "UNKNOWN" if track.embeddings else "LIVE", "label": label,
                 "liveness_score": round(mean, 4), "name": None, "person_id": None,
                 "similarity": round(m["similarity"], 4) if m else None}
+
+    def _begin_action(self, track: Track) -> None:
+        track.action = Action.BLINK  # the only action that happens on its own -- see module docstring
+        track.evaluator = ActionEvaluator(track.action, track.baseline, self.s)
+        track.action_started_at = time.monotonic()
+
+    def _challenge_step(self, track: Track, frame: np.ndarray, face: DetectedFace, mean: float,
+                        base: dict) -> dict | None:
+        """Runs one frame of the silent blink gate: unlike a verification session, Live View never
+        shows a prompt -- it just holds off naming the track until a blink is detected, so the UI
+        looks the same as ordinary passive tracking throughout. Returns a response dict while
+        still pending, or None once it just passed (caller falls through to the identity block in
+        the same frame)."""
+        s = self.s
+        aligned = self.r.alignment.align(frame, face.landmarks)
+        pending = {**base, "state": "LIVE", "label": "Look at the camera", "liveness_score": round(mean, 4),
+                   "name": None, "person_id": None, "similarity": None}
+
+        if track.baseline is None:  # collecting a short baseline pose/eye reading, same as a session's passive phase
+            q = self.r.quality.evaluate(face, aligned, require_frontal=True)
+            if q.valid:
+                eyes = eyes_openness(self.r.landmarks106.predict(frame, face))
+                track.baseline_obs.append((q.yaw, q.pitch, eyes))
+            if len(track.baseline_obs) < s.liveness_min_frames:
+                return pending
+            yaw, pitch, eyes = (float(v) for v in np.median(np.array(track.baseline_obs), axis=0))
+            track.baseline = Baseline(yaw, pitch, eyes)
+            self._begin_action(track)
+
+        if time.monotonic() - track.action_started_at > s.action_timeout_s:
+            self._begin_action(track)  # no session to fail out of here: just try a fresh action
+
+        # Matches the session engine's own BLINK handling: not required to stay frontal mid-blink.
+        q = self.r.quality.evaluate(face, aligned, require_frontal=False)
+        if q.valid:
+            eyes = eyes_openness(self.r.landmarks106.predict(frame, face))
+            if track.evaluator.update(Observation(q.yaw, q.pitch, eyes)):
+                track.challenge_passed = True
+                return None
+
+        return pending
 
     def _create_unknown(self, probe: np.ndarray, aligned: np.ndarray) -> dict:
         """Bucket a LIVE, unmatched face under a new UNASSIGNED person (crop, never the raw frame)."""

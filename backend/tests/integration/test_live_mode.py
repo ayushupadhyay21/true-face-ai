@@ -47,8 +47,11 @@ def run(tracker, frame, n=7):
 
 def test_multiple_faces_tracked_and_named(registry, scene):
     people, vectors, meta, frame = scene
-    # liveness threshold 0 isolates the tracking/identity logic from the PAD decision
-    tracker = LiveTracker(Settings(identity_threshold_override=0.3, liveness_threshold=0.0),
+    # liveness threshold 0 isolates the tracking/identity logic from the PAD decision; the blink
+    # gate is off here too since a repeated static frame can never blink (see
+    # test_active_challenge_blocks_naming_of_a_static_frame, which is exactly that case).
+    tracker = LiveTracker(Settings(identity_threshold_override=0.3, liveness_threshold=0.0,
+                                   live_active_liveness_enabled=False),
                           registry, people, vectors, meta)
     _, out = run(tracker, frame)
     assert out["face_count"] == 2
@@ -65,7 +68,7 @@ def test_multiple_faces_tracked_and_named(registry, scene):
 
 def test_unassigned_face_reuses_same_person_next_session(registry, scene):
     people, vectors, meta, frame = scene
-    settings = Settings(identity_threshold_override=0.3, liveness_threshold=0.0)
+    settings = Settings(identity_threshold_override=0.3, liveness_threshold=0.0, live_active_liveness_enabled=False)
     first = LiveTracker(settings, registry, people, vectors, meta)
     _, out = run(first, frame)
     bush = sorted(out["faces"], key=lambda f: f["bbox"][0])[1]
@@ -84,6 +87,20 @@ def test_no_name_before_liveness_frames(registry, scene):
                           registry, people, vectors, meta)
     _, out = run(tracker, frame, n=2)
     assert all(f["state"] == "CHECKING" and f["name"] is None for f in out["faces"])
+
+
+def test_active_challenge_blocks_naming_of_a_static_frame(registry, scene):
+    """The exact spoof case this feature exists for: a photo/looping video replays the same
+    frame over and over, so it passes passive liveness but can never blink -- it should be stuck
+    at LIVE forever, never named, and silently (no distinct state/label reveals the blink gate)."""
+    people, vectors, meta, frame = scene
+    tracker = LiveTracker(Settings(identity_threshold_override=0.3, liveness_threshold=0.0,
+                                   live_active_liveness_enabled=True),
+                          registry, people, vectors, meta)
+    _, out = run(tracker, frame, n=30)
+    for f in out["faces"]:
+        assert f["state"] == "LIVE" and f["label"] == "Look at the camera"
+        assert f["name"] is None and f["person_id"] is None
 
 
 def test_spoof_tracks_never_named(registry, scene):
@@ -114,7 +131,7 @@ def test_iou():
 
 def test_live_api(registry, scene):
     people, vectors, meta, frame = scene
-    settings = Settings(identity_threshold_override=0.3, liveness_threshold=0.0)
+    settings = Settings(identity_threshold_override=0.3, liveness_threshold=0.0, live_active_liveness_enabled=False)
     tracker = LiveTracker(settings, registry, people, vectors, meta)
     deps.set_container(deps.Container(settings, None, registry, people, FakeSessions(), vectors, None, tracker))
     from app.main import app
