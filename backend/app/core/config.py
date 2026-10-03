@@ -4,6 +4,7 @@ Every threshold used by the pipeline lives here, with a note on where the defaul
 comes from. Values can be overridden through environment variables or the project
 `.env` file (field name in upper case, e.g. QUALITY_MIN_FACE_SIZE=100).
 
+
 The identity threshold is NOT set here by hand: it is read from the calibration file
 written by evaluation/recognition/calibrate_threshold.py (see EVALUATION.md).
 """
